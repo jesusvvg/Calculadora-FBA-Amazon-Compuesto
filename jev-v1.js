@@ -49,7 +49,7 @@
   var state = loadState();
 
   function saveState(){
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+    try{ var latest=JSON.parse(localStorage.getItem(KEY)||"{}")||{}; latest.version=state.version||1; latest.product=Object.assign({},latest.product||{},state.product||{}); latest.eligibility=Object.assign({},latest.eligibility||{},state.eligibility||{}); localStorage.setItem(KEY,JSON.stringify(latest)); }catch(e){}
   }
 
   function injectStyles(){
