@@ -131,7 +131,7 @@
     var x=calc(),stage=state.product&&state.product.stage||"CANDIDATO",warnings=[];
     if(x.units>5&&stage==="CANDIDATO")warnings.push("Producto nuevo: "+x.units+" unidades exceden el piloto inicial máximo de 5.");
     if(x.exposure!==null&&x.exposure>1)warnings.push("El capital del lote supera el presupuesto disponible.");
-    else if(x.exposure!==null&&x.exposure>0.35)warnings.push("Exposición alta para un producto todavía no validado; JEV la evaluará con Capital Efficiency.");
+    else if(x.exposure!==null&&x.exposure>0.35)warnings.push("Exposición alta para un producto todavía no validado; el Motor Scoring la evaluará con Capital Efficiency.");
     if(x.missing.length)warnings.push("Costo real incompleto: falta "+x.missing.join(", ")+".");
     var rs=returnsStatus();if(rs!=="COMPLETO")warnings.push("Datos de devoluciones Amazon: "+rs+".");
 
@@ -150,7 +150,7 @@
   function init(){
     if(!$("jev_phase2"))return;
     injectStyles();buildUI();hydrate();bind();render();
-    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 3";
+    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 3";
     loadPhase4();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
