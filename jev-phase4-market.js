@@ -180,12 +180,15 @@
       '<div class="jev-market-grid">'+r.components.map(function(c){return '<div class="jev-market-mini"><div class="k">'+c.k+'</div><div class="v">'+(c.o.score===null?'—':round5(c.o.score))+'</div><div class="jev-market-note">'+c.o.detail+'</div></div>'}).join("")+'</div>'+
       (r.warnings.length?r.warnings.map(function(w){return '<div class="jev-market-warn">'+w+'</div>'}).join(""):'<div class="jev-market-note">Sin alertas fuertes con los datos cargados.</div>')+
       '<div class="jev-market-note">Fuente: MANUAL · '+checked+' · El score se redondea a bloques de 5 para evitar precisión artificial.</div>';
+    window.JEV_MARKET={result:r,evaluate:evaluate};
   }
 
+  function loadPhase5(){if($("jev-phase5-script"))return;var s=document.createElement("script");s.id="jev-phase5-script";s.src="jev-phase5-rotation-risk.js";document.body.appendChild(s)}
   function init(){
     if(!$("jev_phase3"))return;
     injectStyles();buildUI();hydrate();bind();render();
     var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 4";
+    loadPhase5();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
