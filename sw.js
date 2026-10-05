@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-jev-v1-phase4";
+var CACHE = "fba-calc-jev-v1-phase5";
 var ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,7 @@ var ASSETS = [
   "./jev-phase2.js",
   "./jev-phase3.js",
   "./jev-phase4-market.js",
+  "./jev-phase5-rotation-risk.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
