@@ -200,9 +200,29 @@
   function decorateArithmetic(){
     var out = $("p_out");
     if(!out) return;
-    var label = out.querySelector(".verdict .l");
-    if(label && label.textContent !== "Resultado aritmético · subordinado a elegibilidad"){
-      label.textContent = "Resultado aritmético · subordinado a elegibilidad";
+    var verdict = out.querySelector(".verdict");
+    if(!verdict) return;
+    var label = verdict.querySelector(".l");
+    var value = verdict.querySelector(".v");
+    var status = state.eligibility.status || "NO VERIFICADO";
+
+    if(!verdict.dataset.jevOriginalClass) verdict.dataset.jevOriginalClass = verdict.className;
+    if(value && !verdict.dataset.jevOriginalValue) verdict.dataset.jevOriginalValue = value.textContent;
+
+    if(status !== "AUTORIZADO"){
+      verdict.className = "verdict warn";
+      if(label && label.textContent !== "Análisis financiero · solo informativo"){
+        label.textContent = "Análisis financiero · solo informativo";
+      }
+      if(value && value.textContent !== "SIN DECISIÓN") value.textContent = "SIN DECISIÓN";
+    }else{
+      verdict.className = verdict.dataset.jevOriginalClass || verdict.className;
+      if(label && label.textContent !== "Resultado aritmético · aún no es decisión JEV"){
+        label.textContent = "Resultado aritmético · aún no es decisión JEV";
+      }
+      if(value && verdict.dataset.jevOriginalValue && value.textContent !== verdict.dataset.jevOriginalValue){
+        value.textContent = verdict.dataset.jevOriginalValue;
+      }
     }
   }
 
