@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F4E5F">
+<meta name="description" content="Calculadora de ciclo de caja y análisis de rentabilidad para Amazon FBA">
+<title>Calculadora FBA</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{
+  --bg:#E9EBEA; --panel:#FFF; --ink:#14181D; --ink2:#3A424B; --muted:#6E7880;
+  --line:#D3D8D6; --lineStrong:#A9B1AE; --deep:#1F4E5F;
+  --good:#2F6B3A; --goodBg:#E7F0E6; --warn:#8A6008; --warnBg:#F7EEDA;
+  --bad:#9B2C2C; --badBg:#F7E7E5; --deadBg:#F3EFE4;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  padding:18px 14px calc(48px + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
+.wrap{max-width:940px;margin:0 auto}
+.head{border-bottom:2px solid var(--ink);padding-bottom:10px}
+.eyebrow{font-family:var(--mono);font-size:11px;color:var(--deep);letter-spacing:.14em}
+h1{font-size:22px;font-weight:500;margin:5px 0 0}
+.tabs{display:flex;border-bottom:1px solid var(--lineStrong);margin-bottom:18px}
+.tab{font-family:var(--sans);font-size:14px;padding:11px 16px;border:none;border-bottom:2px solid transparent;
+  background:none;color:var(--muted);cursor:pointer;min-height:44px}
+.tab[aria-selected="true"]{border-bottom-color:var(--deep);color:var(--ink);font-weight:500}
+.grid{display:grid;grid-template-columns:1fr;gap:22px;align-items:start}
+@media(min-width:820px){.grid{grid-template-columns:minmax(230px,1fr) minmax(300px,1.7fr)}}
+.sect{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:22px 0 11px}
+.sect:first-child{margin-top:0}
+label.f{display:block;margin-bottom:13px}
+.flabel{font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+.fbox{display:flex;border:1px solid var(--lineStrong);background:#fff}
+.fbox:focus-within{border-color:var(--deep);box-shadow:0 0 0 2px rgba(31,78,95,.15)}
+.fbox input{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:16px;color:var(--ink);
+  border:none;outline:none;padding:10px;width:100%;background:transparent;min-width:0}
+.fix{font-family:var(--mono);font-size:12px;color:var(--muted);align-self:center;padding:0 9px}
+select{font-family:var(--sans);font-size:14px;color:var(--ink);border:1px solid var(--lineStrong);
+  background:#fff;padding:10px;width:100%;outline:none;border-radius:0;min-height:44px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--panel);border:1px solid var(--lineStrong);padding:15px 15px 5px;margin-bottom:14px}
+.cardtitle{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:left;
+  padding:0 8px 7px;border-bottom:1px solid var(--lineStrong);font-weight:400}
+th.r,td.r{text-align:right}
+td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td .sub{font-size:11px;color:var(--muted);margin-top:2px}
+tr.dead{background:var(--deadBg)}
+tr.dead td.n{color:var(--warn)}
+tr.pes{background:#FAF6F5}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--line);background:#fff;padding:11px 13px}
+.stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;margin-top:5px;line-height:1.1}
+.stat .s{font-size:11px;color:var(--muted);margin-top:4px}
+.v.bad{color:var(--bad)}.v.warn{color:var(--warn)}.v.good{color:var(--good)}
+.verdict{padding:14px 16px;margin-bottom:14px;border:1.5px solid}
+.verdict .l{font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.verdict .v{font-family:var(--mono);font-size:24px;margin-top:4px;letter-spacing:.02em}
+.verdict.good{background:var(--goodBg);border-color:var(--good);color:var(--good)}
+.verdict.warn{background:var(--warnBg);border-color:var(--warn);color:var(--warn)}
+.verdict.bad{background:var(--badBg);border-color:var(--bad);color:var(--bad)}
+.msg{display:flex;gap:9px;margin-bottom:8px;font-size:13.5px;line-height:1.5}
+.msg .i{font-family:var(--mono);flex-shrink:0}
+.msg.c{color:var(--ink)}.msg.c .i{color:var(--bad)}
+.msg.a{color:var(--ink2)}.msg.a .i{color:var(--warn)}
+.msg.n{color:var(--muted);font-size:12.5px}
+.note{background:#fff;border:1px solid var(--line);padding:11px 13px;font-size:12.5px;color:var(--ink2);line-height:1.6}
+.foot{font-size:11.5px;color:var(--muted);line-height:1.6;border-top:1px solid var(--lineStrong);padding-top:10px;margin-top:14px}
+.linkbtn{font-size:12.5px;color:var(--deep);background:none;border:none;padding:8px 0;cursor:pointer;
+  text-decoration:underline;min-height:44px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.hide{display:none}
+strong.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#install{position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));
+  background:var(--deep);color:#fff;border:none;padding:14px;font-size:14px;font-family:var(--sans);
+  cursor:pointer;display:none;z-index:10;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+@media(min-width:820px){#install{left:auto;right:20px;width:280px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow">PROYECTO AMAZON FBA · v3</div>
+    <h1>Calculadora de ciclo y análisis de producto</h1>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="t-ciclo" role="tab" aria-selected="true" aria-controls="p-ciclo">Ciclo de caja</button>
+    <button class="tab" id="t-prod" role="tab" aria-selected="false" aria-controls="p-prod">Análisis de producto</button>
+  </div>
+
+  <section id="p-ciclo" role="tabpanel" aria-labelledby="t-ciclo">
+    <div class="grid">
+      <div>
+        <div class="sect">Datos de entrada</div>
+        <label class="f"><div class="flabel">Fecha de compra al proveedor</div>
+          <div class="fbox"><input type="date" id="c_compra"></div></label>
+        <label class="f"><div class="flabel">Días hasta activación en Amazon</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="c_activ"><span class="fix">días</span></div>
+          <div class="hint">Preparación, flete y recepción</div></label>
+        <label class="f"><div class="flabel">Días hasta que se venda</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="c_venta"><span class="fix">días</span></div>
+          <div class="hint">Si no sabes nada del producto, pon 30</div></label>
+        <label class="f"><div class="flabel">Días de envío al cliente</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="c_envio"><span class="fix">días</span></div></label>
+        <div class="two">
+          <label class="f"><div class="flabel">1ª fecha de corte</div>
+            <div class="fbox"><input type="number" inputmode="numeric" id="c_corte1"></div>
+            <div class="hint">Día del mes</div></label>
+          <label class="f"><div class="flabel">2ª fecha de corte</div>
+            <div class="fbox"><input type="number" inputmode="numeric" id="c_corte2"></div>
+            <div class="hint">Día del mes</div></label>
+        </div>
+        <label class="f"><div class="flabel">Días de transferencia bancaria</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="c_banco"><span class="fix">días</span></div></label>
+      </div>
+      <div id="c_out"></div>
+    </div>
+  </section>
+
+  <section id="p-prod" role="tabpanel" aria-labelledby="t-prod" class="hide">
+    <div class="grid">
+      <div>
+        <div class="sect">Venta</div>
+        <label class="f"><div class="flabel">Precio de venta en Amazon</div>
+          <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_precio"></div></label>
+        <label class="f"><div class="flabel">Referral fee</div>
+          <div class="fbox"><input type="number" inputmode="decimal" step="0.5" id="p_ref"><span class="fix">%</span></div>
+          <div class="hint">15% en la mayoría, 8% en electrónica</div></label>
+        <label class="f"><div class="flabel">FBA fee</div>
+          <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_fba"></div>
+          <div class="hint">Cópialo de la calculadora oficial de Amazon</div></label>
+
+        <div class="sect">Compra</div>
+        <label class="f"><div class="flabel">Moneda de compra</div>
+          <select id="p_moneda">
+            <option value="USD">Dólar estadounidense</option>
+            <option value="CLP">Peso chileno</option>
+            <option value="CAD">Dólar canadiense</option>
+          </select></label>
+        <label class="f hide" id="p_tcwrap"><div class="flabel">Tipo de cambio del día de compra</div>
+          <div class="fbox"><input type="number" inputmode="decimal" step="0.01" id="p_tc"></div>
+          <div class="hint" id="p_tchint"></div></label>
+        <label class="f"><div class="flabel">Costo del producto (COGS), por unidad</div>
+          <div class="fbox"><span class="fix" id="p_cur1">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_cogs"></div></label>
+        <label class="f"><div class="flabel">Flete total del lote a bodega</div>
+          <div class="fbox"><span class="fix" id="p_cur2">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_flete"></div>
+          <div class="hint">El total, no por unidad</div></label>
+        <label class="f"><div class="flabel">Unidades del lote</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="p_unid"></div></label>
+
+        <div class="sect">Capital y operación</div>
+        <label class="f"><div class="flabel">Presupuesto disponible</div>
+          <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" id="p_presu"></div></label>
+        <label class="f"><div class="flabel">Plan de vendedor</div>
+          <select id="p_plan">
+            <option value="pro">Profesional · US$39,99 al mes</option>
+            <option value="ind">Individual · US$0,99 por unidad</option>
+            <option value="no">No incluir</option>
+          </select></label>
+        <label class="f"><div class="flabel">Productos simultáneos</div>
+          <div class="fbox"><input type="number" inputmode="numeric" min="1" id="p_simult"></div>
+          <div class="hint" id="p_simulthint"></div></label>
+        <label class="f"><div class="flabel">Días del ciclo</div>
+          <div class="fbox"><input type="number" inputmode="numeric" id="p_dias"><span class="fix">días</span></div>
+          <div class="hint" id="p_diashint"></div></label>
+
+        <button class="linkbtn" id="p_toggle">Mostrar costos finos</button>
+        <div id="p_fino" class="hide">
+          <label class="f"><div class="flabel">Almacenamiento mensual</div>
+            <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_almac"></div>
+            <div class="hint">Se multiplica por los meses del ciclo</div></label>
+          <label class="f"><div class="flabel">Publicidad por unidad</div>
+            <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_ppc"></div></label>
+          <label class="f"><div class="flabel">Tasa de devolución</div>
+            <div class="fbox"><input type="number" inputmode="decimal" step="0.5" id="p_devol"><span class="fix">%</span></div>
+            <div class="hint">3–5% típico, 15%+ en ropa</div></label>
+        </div>
+      </div>
+      <div id="p_out"></div>
+    </div>
+  </section>
+</div>
+
+<button id="install">Instalar la calculadora</button>
+
+<script>
+"use strict";
+var MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+var DIAS_MES=30.4, MONEDAS={USD:1,CLP:950,CAD:1.37};
+var DEF={c_compra:"",c_activ:"21",c_venta:"14",c_envio:"3",c_corte1:"1",c_corte2:"15",c_banco:"4",
+  p_precio:"40",p_ref:"15",p_fba:"5.50",p_moneda:"USD",p_tc:"1",p_cogs:"18",p_flete:"10",
+  p_unid:"10",p_presu:"300",p_plan:"pro",p_simult:"1",p_dias:"",p_almac:"0.18",p_ppc:"0",p_devol:"4"};
+var IDS=Object.keys(DEF);
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function num(v){var n=Number(v);return (v===""||v===null||isNaN(n))?0:n}
+function parseISO(s){if(!s)return null;var p=s.split("-").map(Number);
+  if(p.length!==3||p.some(isNaN))return null;return new Date(Date.UTC(p[0],p[1]-1,p[2]))}
+function addDays(d,n){var x=new Date(d.getTime());x.setUTCDate(x.getUTCDate()+Math.round(n));return x}
+function fmtD(d){return d?String(d.getUTCDate()).padStart(2,"0")+" "+MESES[d.getUTCMonth()]+" "+d.getUTCFullYear():"—"}
+function nextCutoff(from,days){var v=days.filter(function(n){return n>=1&&n<=31});
+  if(!v.length)return{date:from,wait:0};
+  for(var i=0;i<=62;i++){var c=addDays(from,i);if(v.indexOf(c.getUTCDate())>=0)return{date:c,wait:i}}
+  return{date:from,wait:0}}
+function money(n){return (n<0?"−":"")+"$"+Math.abs(n).toLocaleString("es-CL",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function money0(n){return (n<0?"−":"")+"$"+Math.abs(n).toLocaleString("es-CL",{maximumFractionDigits:0})}
+function pctf(n){return isFinite(n)?(n*100).toFixed(1)+"%":"—"}
+function stat(l,v,s,tone){return '<div class="stat"><div class="l">'+l+'</div><div class="v '+(tone||"")+'">'+v+
+  '</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'}
+
+function calcCiclo(){
+  var d0=parseISO($("c_compra").value); if(!d0) return null;
+  var a=Math.max(0,num($("c_activ").value)),v=Math.max(0,num($("c_venta").value)),
+      e=Math.max(0,num($("c_envio").value)),b=Math.max(0,num($("c_banco").value));
+  var fActiv=addDays(d0,a),fVenta=addDays(fActiv,v),fEntrega=addDays(fVenta,e),fDisp=addDays(fEntrega,7);
+  var cortes=[num($("c_corte1").value),num($("c_corte2").value)].filter(function(x){return x>=1&&x<=31});
+  var nc=nextCutoff(fDisp,cortes.length?cortes:[1,15]);
+  var fBanco=addDays(nc.date,b);
+  var total=Math.round((fBanco-d0)/86400000);
+  return {d0:d0,a:a,v:v,e:e,b:b,fActiv:fActiv,fVenta:fVenta,fEntrega:fEntrega,fDisp:fDisp,
+    fCorte:nc.date,wait:nc.wait,fBanco:fBanco,total:total,ciclosAno:365/Math.max(total,1)};
+}
+
+function renderCiclo(){
+  var c=calcCiclo(), out=$("c_out");
+  if(!c){out.innerHTML='<div class="note">Ingresa una fecha de compra válida para ver la línea de tiempo.</div>';return}
+  function row(l,note,d,f,dead){return '<tr'+(dead?' class="dead"':'')+'><td>'+l+
+    (note?'<div class="sub">'+note+'</div>':'')+'</td><td class="n r">'+(d===null?"—":"+"+d)+
+    '</td><td class="n r">'+fmtD(f)+'</td></tr>'}
+  out.innerHTML=
+    '<div class="card"><table><thead><tr><th>Hito</th><th class="r">Días</th><th class="r">Fecha</th></tr></thead><tbody>'+ 
+    row("Pagas al proveedor","Aquí asumes el riesgo",null,c.d0)+
+    row("Amazon activa el inventario","",c.a,c.fActiv)+
+    row("Se vende","",c.v,c.fVenta)+
+    row("El cliente recibe","",c.e,c.fEntrega)+
+    row("Reserva DD+7 termina","Pasa a saldo disponible",7,c.fDisp)+
+    row("Fecha de corte de pago","Tiempo muerto de calendario",c.wait,c.fCorte,true)+
+    row("Dinero en tu banco","",c.b,c.fBanco)+
+    '</tbody></table></div><div class="stats">'+
+    stat("Ciclo total",c.total+" días","Compra hasta cobro")+
+    stat("Ciclos por año",c.ciclosAno.toFixed(1),"Veces que rota tu capital")+
+    stat("Tiempo muerto",c.wait+" días","Esperando el calendario",c.wait>=8?"warn":"")+
+    '</div><div class="note">Tu dinero quedó disponible el <strong class="m">'+fmtD(c.fDisp)+
+    '</strong> pero llegó al banco el <strong class="m">'+fmtD(c.fBanco)+'</strong>. Los '+c.wait+
+    ' días de espera al corte no responden a ninguna razón operativa.</div>';
+  $("p_diashint").textContent="Vacío usa "+c.total+" días de la otra pestaña";
+  $("p_simulthint").textContent="Entre cuántos repartes el plan. Con 1, lo carga entero";
+}
+
+function renderProd(){
+  var c=calcCiclo();
+  var p=num($("p_precio").value), rp=num($("p_ref").value)/100, fba=num($("p_fba").value);
+  var moneda=$("p_moneda").value, rate=Math.max(num($("p_tc").value),0.0001);
+  var cogs=num($("p_cogs").value), fleteLote=num($("p_flete").value);
+  var almacMes=num($("p_almac").value), ppc=num($("p_ppc").value);
+  var tasaDev=Math.min(Math.max(num($("p_devol").value)/100,0),1);
+  var u=Math.max(0,Math.round(num($("p_unid").value)));
+  var presu=num($("p_presu").value), plan=$("p_plan").value;
+  var simult=Math.max(1,Math.round(num($("p_simult").value)||1));
+  var refCalc=p*rp, referral=p>0?Math.max(refCalc,0.3):0, minAplic=p>0&&refCalc<0.3;
+  var cogsUSD=cogs/rate, fleteUnit=u>0?(fleteLote/rate)/u:0;
+  var capUnit=cogsUSD+fleteUnit, capTotal=capUnit*u;
+  var capLibre=presu-capTotal, pctComp=presu>0?capTotal/presu:0;
+  var diasManual=$("p_dias").value;
+  var diasBase=(diasManual!==""&&!isNaN(Number(diasManual)))?Number(diasManual):(c?c.total:60);
+  var diasBodegaBase=c?Math.max(0,c.v):Math.max(0,diasBase*0.25);
+
+  var esc2=[{k:"Pesimista",st:.6,f:1.5},{k:"Base",st:.8,f:1},{k:"Optimista",st:1,f:.8}].map(function(s){
+    var dias=Math.max(1,diasBase*s.f);
+    var diasBodega=Math.max(0,diasBodegaBase*s.f), meses=diasBodega/DIAS_MES, almacU=almacMes*meses;
+    var netaU=p-referral-fba-cogsUSD-fleteUnit-almacU-ppc;
+    var brutas=u*s.st, devueltas=brutas*tasaDev, netasV=brutas-devueltas, muertas=u-brutas;
+    var perdDev=devueltas*(capUnit+referral*0.2);
+    var porCiclo=netasV*netaU-muertas*capUnit-perdDev;
+    var ciclos=365/dias, brutoAnual=porCiclo*ciclos, unidAno=netasV*ciclos;
+    var costoPlan=plan==="pro"?(479.88/simult):(plan==="ind"?0.99*unidAno:0);
+    return {k:s.k,st:s.st,dias:Math.round(dias),diasBodega:Math.round(diasBodega),meses:meses,
+      almacU:almacU,netaU:netaU,porCiclo:porCiclo,costoPlan:costoPlan,
+      brutoAnual:brutoAnual,anual:brutoAnual-costoPlan}});
+
+  var base=esc2[1], neta=base.netaU;
+  var margen=p>0?neta/p:0, roi=capUnit>0?neta/capUnit:0, roiAnual=roi*(365/Math.max(diasBase,1));
+  var costosSinPrecio=fba+cogsUSD+fleteUnit+base.almacU+ppc;
+  var precioMin=rp<1?costosSinPrecio/(1-rp):0;
+  var equil=neta>0?(u*capUnit)/(neta+capUnit):null;
+
+  var crit=[],avis=[],nota=[];
+  if(p<=0||cogs<=0) crit.push("Faltan datos mínimos: precio de venta y costo del producto.");
+  else{
+    if(neta<=0) crit.push("La ganancia neta por unidad es cero o negativa. Pierdes dinero en cada venta.");
+    if(neta>0&&roi<0.3) crit.push("ROI de "+pctf(roi)+", bajo el mínimo de 30% que usamos como colchón contra imprevistos.");
+    if(neta>0&&margen<0.15) crit.push("Margen de "+pctf(margen)+": muy poco espacio si un competidor baja el precio.");
+    if(esc2[0].anual<0) crit.push("En el escenario pesimista el resultado anual es negativo una vez descontado el plan de vendedor.");
+    if(neta>0&&neta<3) avis.push("Ganancia de "+money(neta)+" por unidad. Revisa si justifica el trabajo físico de cada caja.");
+    if(presu>0&&capTotal>presu) avis.push("El lote requiere "+money(capTotal)+" y tu presupuesto es "+money(presu)+".");
+    else if(presu>0&&pctComp>0.6) avis.push("Comprometes el "+pctf(pctComp)+" de tu capital en un solo producto. Te quedan "+money(capLibre)+" para reaccionar.");
+    if(diasBase>75) avis.push("Ciclo de "+Math.round(diasBase)+" días: tu capital rota menos de 5 veces al año.");
+    if(plan==="pro"&&base.brutoAnual<479.88/simult) avis.push("Este producto no cubre ni su cuota del plan Profesional ("+money(479.88/simult)+" al año con "+simult+" producto"+(simult>1?"s":"")+" simultáneo"+(simult>1?"s":"")+").");
+    if(plan==="pro"&&simult>1&&capTotal*simult>presu&&presu>0) avis.push("Declaraste "+simult+" productos simultáneos, pero tu presupuesto no alcanza para tantos lotes como este.");
+    if(tasaDev>=0.1) avis.push("Tasa de devolución de "+pctf(tasaDev)+". Verifica si la categoría lo justifica antes de comprar.");
+    if(minAplic) avis.push("Se aplicó el referral fee mínimo de $0,30 porque el precio es muy bajo.");
+    if(!crit.length&&!avis.length){
+      if(ppc===0) nota.push("No incluiste publicidad. Si el producto la necesita, el margen real será menor.");
+      if(almacMes===0) nota.push("No incluiste almacenamiento mensual.");
+      if(tasaDev===0) nota.push("No incluiste devoluciones. Ninguna categoría tiene 0%.");
+    }
+  }
+  var verd=crit.length?"DESCARTAR":(avis.length?"INVESTIGAR":"PASA EL FILTRO");
+  var vt=crit.length?"bad":(avis.length?"warn":"good");
+
+  var lineas=[["Precio de venta",p,""],
+    ["Referral fee"+(minAplic?" (mínimo $0,30)":""),-referral,""],
+    ["FBA fee",-fba,""],
+    ["Costo del producto",-cogsUSD,moneda!=="USD"?moneda+" "+cogs+" ÷ "+rate:""],
+    ["Flete de entrada",-fleteUnit,"lote ÷ "+u+" unidades"],
+    ["Almacenamiento",-base.almacU,base.diasBodega+" días en bodega ("+base.meses.toFixed(1)+" meses)"],
+    ["Publicidad",-ppc,""]];
+  var desg=lineas.map(function(l){return '<tr><td>'+esc(l[0])+(l[2]?'<div class="sub">'+esc(l[2])+'</div>':'')+
+    '</td><td class="n r">'+money(l[1])+'</td></tr>'}).join("");
+
+  var filas=esc2.map(function(s){return '<tr'+(s.k==="Pesimista"?' class="pes"':'')+'><td>'+s.k+
+    (s.k==="Pesimista"?'<div class="sub">Decide con este</div>':'')+'</td><td class="n r">'+pctf(s.st)+
+    '</td><td class="n r">'+s.dias+' d</td><td class="n r">'+money0(s.porCiclo)+
+    '</td><td class="n r" style="color:var(--muted)">'+money0(-s.costoPlan)+
+    '</td><td class="n r" style="'+(s.anual<0?'color:var(--bad)':'')+'">'+money0(s.anual)+'</td></tr>'}).join("");
+
+  var msgs="";
+  crit.forEach(function(t){msgs+='<div class="msg c"><span class="i">×</span><span>'+esc(t)+'</span></div>'});
+  avis.forEach(function(t){msgs+='<div class="msg a"><span class="i">!</span><span>'+esc(t)+'</span></div>'});
+  nota.forEach(function(t){msgs+='<div class="msg n"><span class="i">·</span><span>'+esc(t)+'</span></div>'});
+
+  $("p_out").innerHTML=
+    '<div class="verdict '+vt+'"><div class="l">Veredicto aritmético</div><div class="v">'+verd+'</div></div>'+ 
+    '<div class="stats">'+
+      stat("Ganancia neta",money(neta),"Por unidad, escenario base",neta<=0?"bad":"")+
+      stat("Margen",pctf(margen),"Neta / precio",margen<0.15?"bad":"")+
+      stat("ROI",pctf(roi),"Ciclo de "+Math.round(diasBase)+" días",roi<0.3?"bad":"")+
+    '</div><div class="stats">'+
+      stat("Capital comprometido",money0(capTotal),pctf(pctComp)+" del presupuesto",pctComp>0.6?"warn":"")+
+      stat("Capital libre",money0(capLibre),"Para reaccionar",capLibre<0?"bad":"")+
+      stat("Punto de equilibrio",equil?Math.ceil(equil)+" de "+u:"—","Unidades para no perder")+
+      stat("Precio mínimo",money(precioMin),"Bajo esto, pierdes")+
+    '</div>'+ 
+    '<div class="card"><div class="cardtitle">Desglose de la unidad · escenario base</div><table><tbody>'+desg+
+    '<tr><td style="font-weight:500;border-bottom:none">Ganancia neta</td><td class="n r" style="border-bottom:none;font-size:15px;color:'+
+    (neta>0?'var(--good)':'var(--bad)')+'">'+money(neta)+'</td></tr></tbody></table></div>'+ 
+    '<div class="card"><div class="cardtitle">Escenarios · '+u+' unidades</div><div class="scroll">'+
+    '<table style="min-width:430px"><thead><tr><th>Escenario</th><th class="r">Vende</th><th class="r">Ciclo</th>'+ 
+    '<th class="r">Por ciclo</th><th class="r">Plan</th><th class="r">Al año</th></tr></thead><tbody>'+filas+
+    '</tbody></table></div><div class="foot" style="border:none;padding-top:8px">Las no vendidas se descuentan a capital completo. '+
+    'Las devueltas pierden capital más el 20% administrativo del referral. '+
+    (plan==="pro"?'La columna Plan carga '+money(479.88/simult)+', que es el plan Profesional dividido entre '+simult+' producto'+(simult>1?'s':'')+' simultáneo'+(simult>1?'s':'')+'. ':'')+
+    'ROI anualizado del escenario base: <strong class="m">'+
+    pctf(roiAnual)+'</strong>, que sobre '+money0(base.anual)+' reales al año es la cifra que importa.</div></div>'+ 
+    (msgs?'<div class="card" style="padding-bottom:8px"><div class="cardtitle">Por qué este veredicto</div>'+msgs+'</div>':'')+
+    '<div class="foot">Esta herramienta solo hace aritmética con los datos que le entregas. No verifica demanda, competencia, '+
+    'número de vendedores, restricciones de categoría ni historial de precios. Pasar el filtro significa que los números cierran, '+
+    'no que el producto se vaya a vender.</div>';
+}
+
+function render(){renderCiclo();renderProd();save()}
+
+function save(){try{var o={};IDS.forEach(function(k){o[k]=$(k).value});
+  localStorage.setItem("fba_v2",JSON.stringify(o))}catch(e){}}
+function load(){var o=null;try{o=JSON.parse(localStorage.getItem("fba_v2")||"null")}catch(e){}
+  IDS.forEach(function(k){$(k).value=(o&&o[k]!==undefined)?o[k]:DEF[k]});
+  if(!$("c_compra").value)$("c_compra").value=new Date().toISOString().slice(0,10);
+  syncMoneda()}
+
+function syncMoneda(){var m=$("p_moneda").value;
+  $("p_cur1").textContent=m==="USD"?"US$":m; $("p_cur2").textContent=m==="USD"?"US$":m;
+  $("p_tcwrap").className=m==="USD"?"f hide":"f";
+  $("p_tchint").textContent="Cuántos "+m+" por 1 USD";}
+
+function tab(id){
+  var ciclo=id==="ciclo";
+  $("t-ciclo").setAttribute("aria-selected",ciclo);
+  $("t-prod").setAttribute("aria-selected",!ciclo);
+  $("p-ciclo").className=ciclo?"":"hide";
+  $("p-prod").className=ciclo?"hide":"";
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+  load();
+  IDS.forEach(function(k){$(k).addEventListener("input",render);$(k).addEventListener("change",render)});
+  $("p_moneda").addEventListener("change",function(){
+    $("p_tc").value=String(MONEDAS[$("p_moneda").value]||1);syncMoneda();render()});
+  $("t-ciclo").addEventListener("click",function(){tab("ciclo")});
+  $("t-prod").addEventListener("click",function(){tab("prod")});
+  $("p_toggle").addEventListener("click",function(){
+    var f=$("p_fino"), open=f.className==="hide";
+    f.className=open?"":"hide";
+    this.textContent=open?"Ocultar costos finos":"Mostrar costos finos"});
+  render();
+  if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(function(){})}
+});
+
+var deferred=null;
+window.addEventListener("beforeinstallprompt",function(e){
+  e.preventDefault();deferred=e;$("install").style.display="block"});
+$("install").addEventListener("click",function(){
+  if(!deferred)return;deferred.prompt();
+  deferred.userChoice.then(function(){deferred=null;$("install").style.display="none"})});
+window.addEventListener("appinstalled",function(){$("install").style.display="none"});
+</script>
+</body>
+</html>
