@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-jev-v1-phase1";
+var CACHE = "fba-calc-jev-v1-phase1b";
 var ASSETS = [
   "./",
   "./index.html",
