@@ -93,8 +93,20 @@
     return {passed:results.length-failed.length,failed:failed.length,criticalFailed:critical.length,total:results.length,results:results};
   }
   window.MOTOR_SCORING_SELF_TEST=runSelfTests();
+  function reportSelfTests(){
+    var r=window.MOTOR_SCORING_SELF_TEST;
+    try{
+      console.group("Motor Scoring · Self Tests");
+      console.log("Resultado:",r.passed+"/"+r.total,"OK ·",r.failed,"fallos ·",r.criticalFailed,"críticos");
+      if(r.failed) console.table(r.results.filter(function(x){return !x.pass}));
+      else console.table(r.results);
+      console.groupEnd();
+    }catch(e){}
+    return r;
+  }
+  window.MOTOR_SCORING_TEST_REPORT=reportSelfTests;
 
   function loadNext(){}
-  function init(){if(!$("jev_rotation_risk_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_rotation_summary");observe("jev_risk_summary");observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");render();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · MOTOR";loadNext()}
+  function init(){if(!$("jev_rotation_risk_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_rotation_summary");observe("jev_risk_summary");observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");render();reportSelfTests();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · MOTOR";loadNext()}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
