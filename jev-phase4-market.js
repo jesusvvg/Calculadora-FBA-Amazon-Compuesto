@@ -73,7 +73,7 @@
       fsel("jev_amazon_seller","Amazon como vendedor",["NO VERIFICADO","NO","INTERMITENTE","SÍ"],"")+
       fsel("jev_buybox","Buy Box",["NO VERIFICADA","ESTABLE","VARIABLE","CONCENTRADA"],"CONCENTRADA = uno o pocos sellers dominan la Buy Box.")+
       fsel("jev_seasonality","Estacionalidad",["NO VERIFICADA","BAJA","MEDIA","ALTA"],"")+
-      '<div class="hint">Fuente actual: MANUAL. Más adelante estos mismos campos podrán venir de Keepa/SP-API/otros proveedores sin cambiar JEV.</div>'+
+      '<div class="hint">Fuente actual: MANUAL. Más adelante estos mismos campos podrán venir de Keepa/SP-API/otros proveedores sin cambiar el Motor Scoring.</div>'+
     '</div></details>';
     p3.parentNode.insertBefore(box,p3.nextSibling);
 
@@ -187,7 +187,7 @@
   function init(){
     if(!$("jev_phase3"))return;
     injectStyles();buildUI();hydrate();bind();render();
-    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 4";
+    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 4";
     loadPhase5();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
