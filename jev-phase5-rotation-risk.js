@@ -47,6 +47,6 @@
   function render(){state=read();var rot=evaluateRotation(),risk=evaluateRisk();renderCard("jev_rotation_summary","Rotation Score v1 · heurístico",rot,true);renderCard("jev_risk_summary","Risk Score v1 · heurístico",risk,false);hideLegacyVerdict();window.JEV_PHASE5={rotation:rot,risk:risk,evaluateRotation:evaluateRotation,evaluateRisk:evaluateRisk,render:render}}
   function loadPhase6(){if($("jev-phase6-script"))return;var s=document.createElement("script");s.id="jev-phase6-script";s.src="jev-phase6-engine.js";document.body.appendChild(s)}
 
-  function init(){if(!$("jev_market_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");observe("p_out");render();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 5";loadPhase6()}
+  function init(){if(!$("jev_market_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");observe("p_out");render();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 5";loadPhase6()}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
