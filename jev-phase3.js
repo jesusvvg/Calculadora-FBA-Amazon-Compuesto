@@ -135,7 +135,7 @@
     if(x.missing.length)warnings.push("Costo real incompleto: falta "+x.missing.join(", ")+".");
     var rs=returnsStatus();if(rs!=="COMPLETO")warnings.push("Datos de devoluciones Amazon: "+rs+".");
 
-    card.innerHTML='<div class="cardtitle">Capital antes de vender · JEV</div>'+
+    card.innerHTML='<div class="cardtitle">Capital antes de vender · Motor Scoring</div>'+
       '<div class="jev-phase3-grid">'+
         '<div class="jev-phase3-metric"><div class="k">Checkout / unidad</div><div class="v">'+(x.checkoutUSD===null?'INCOMPLETO':money(x.checkoutUSD))+'</div></div>'+
         '<div class="jev-phase3-metric"><div class="k">Landed cost / unidad</div><div class="v">'+(x.landed===null?'INCOMPLETO':money(x.landed))+'</div></div>'+
