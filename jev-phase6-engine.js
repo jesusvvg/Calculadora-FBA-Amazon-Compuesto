@@ -107,6 +107,6 @@
   window.MOTOR_SCORING_TEST_REPORT=reportSelfTests;
 
   function loadNext(){}
-  function init(){if(!$("jev_rotation_risk_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_rotation_summary");observe("jev_risk_summary");observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");render();reportSelfTests();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · MOTOR";loadNext()}
+  function init(){if(!$("jev_rotation_risk_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_rotation_summary");observe("jev_risk_summary");observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");render();reportSelfTests();if(window.AMAZON_COMPOUND_OPERATIONS&&typeof window.AMAZON_COMPOUND_OPERATIONS.mount==="function")window.AMAZON_COMPOUND_OPERATIONS.mount();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · MOTOR";loadNext()}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
