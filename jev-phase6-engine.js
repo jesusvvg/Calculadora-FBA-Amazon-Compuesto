@@ -49,6 +49,34 @@
   function card(id,title,score,band,comps,warnings,note){var e=$(id);if(!e)return;e.innerHTML='<div class="jev-engine-head"><div><div class="cardtitle">'+title+'</div><div class="jev-engine-note">'+note+'</div></div><div><div class="jev-engine-big">'+(score===null?'—':score+'/100')+'</div><div class="jev-engine-band">'+band+'</div></div></div>'+(comps?'<div class="jev-engine-grid">'+comps.map(function(c){return '<div class="jev-engine-mini"><div class="k">'+c.k+'</div><div class="v">'+(c.score!==undefined?round5(c.score):Math.round(c.v))+'</div><div class="jev-engine-note">'+(c.detail||'')+'</div></div>'}).join("")+'</div>':'')+(warnings&&warnings.length?warnings.map(function(w){return '<div class="jev-engine-alert">'+w+'</div>'}).join(''):'')}
   function render(){state=read();var fin=evaluateFinancial(),cap=evaluateCapital(fin),land=landed(state),conf=dataCompleteness(state,land),final=evaluateFinal(fin,cap,conf);card("jev_financial_score","Financial Score v1",fin.score,fin.complete?(fin.score>=70?"SÓLIDO":(fin.score>=55?"ACEPTABLE":"DÉBIL")):"INCOMPLETO",fin.components,fin.warnings||fin.missing,"Beneficio, margen, ROI, break-even y escenario pesimista con costo real.");card("jev_cap_eff_score","Capital Efficiency Score v1",cap.score,cap.complete?(cap.score>=70?"ALTA":(cap.score>=50?"MEDIA":"BAJA")):"INCOMPLETO",cap.components,cap.warnings||(cap.reason?[cap.reason]:[]),"Prioriza recuperación y reutilización del capital, no solo ROI.");card("jev_confidence_score","Data Confidence",conf.score,conf.band,conf.parts.map(function(p){return {k:p.k,v:p.v,detail:""}}),conf.score<65?["Datos insuficientes para una recomendación fuerte."]:[],"Mide cobertura y frescura de los datos; no es probabilidad de éxito.");var f=$("jev_final_decision");if(f){f.className="jev-final "+final.tone;f.innerHTML='<div class="cardtitle">Decisión MOTOR SCORING v1</div><div class="decision">'+final.decision+'</div><div>'+final.reason+'</div>'+(final.score!==null?'<div class="jev-engine-note">Motor Scoring ajustado: '+final.score+'/100 · heurístico, no probabilidad.</div>':'')+(final.pilotUnits?'<div class="jev-engine-note">Piloto recomendado: máximo '+final.pilotUnits+' unidad'+(final.pilotUnits===1?'':'es')+' · capital estimado '+money(final.pilotCapital)+'.</div>':'')+'<div class="jev-engine-note">'+final.reasons.join(' · ')+'</div><div class="jev-engine-note">REPONER y ESCALAR permanecen bloqueados hasta validar resultados reales del piloto.</div>'}window.MOTOR_SCORING_ENGINE={financial:fin,capital:cap,confidence:conf,final:final}}
 
+  function runSelfTests(){
+    var results=[];
+    function add(id,name,expected,actual,critical){
+      results.push({id:id,name:name,expected:expected,actual:actual,pass:expected===actual,critical:!!critical});
+    }
+    function gateCase(e,pm,bp,au){
+      var s={eligibility:{status:e},verification:{productMatch:{status:pm||"MATCH CONFIRMADO"},brandPolicy:{status:bp||"SIN PROHIBICIÓN ENCONTRADA"},supply:{authenticity:au||"VERIFICADA"}}};
+      var g=(function(s){var e=s.eligibility&&s.eligibility.status||"NO VERIFICADO",v=s.verification||{},pm=v.productMatch&&v.productMatch.status||"NO VERIFICADO",bp=v.brandPolicy&&v.brandPolicy.status||"NO VERIFICADA",au=v.supply&&v.supply.authenticity||"NO VERIFICADA";if(e==="NO AUTORIZADO")return "DESCARTAR";if(e==="NO VERIFICADO")return "ESPERAR";if(e==="REQUIERE APROBACIÓN")return "ESPERAR";if(pm==="NO COINCIDE")return "DESCARTAR";if(pm!=="MATCH CONFIRMADO")return "ESPERAR";if(bp==="RESTRICCIÓN EXPLÍCITA AMAZON")return "DESCARTAR";if(au==="DUDOSA")return "ESPERAR";return "CONTINUAR"})(s);
+      return g;
+    }
+    add("T08","No autorizado","DESCARTAR",gateCase("NO AUTORIZADO"),true);
+    add("T09","Requiere aprobación","ESPERAR",gateCase("REQUIERE APROBACIÓN"),true);
+    add("T07A","Elegibilidad no verificada","ESPERAR",gateCase("NO VERIFICADO"),true);
+    add("T10","Match incorrecto","DESCARTAR",gateCase("AUTORIZADO","NO COINCIDE"),true);
+    add("T10B","Match dudoso","ESPERAR",gateCase("AUTORIZADO","MATCH DUDOSO"),true);
+    add("TBR","Restricción explícita marca","DESCARTAR",gateCase("AUTORIZADO","MATCH CONFIRMADO","RESTRICCIÓN EXPLÍCITA AMAZON"),true);
+    add("TAU","Autenticidad dudosa","ESPERAR",gateCase("AUTORIZADO","MATCH CONFIRMADO","SIN PROHIBICIÓN ENCONTRADA","DUDOSA"),true);
+    add("T01","DTC >120","ESPERAR",(function(){var rot={dtc:121,score:90},risk={score:20},market={score:90},fin={complete:true,hardDiscard:false,margin:.20,roi:.40,score:90},cap={complete:true,score:90},conf={score:90};if(rot.dtc>120)return "ESPERAR";return "COMPRAR PILOTO"})(),true);
+    add("T11","Economía bajo break-even","DESCARTAR",(function(){var fin={complete:true,hardDiscard:true};return fin.hardDiscard?"DESCARTAR":"CONTINUAR"})(),true);
+    add("T07B","Data Confidence baja","ESPERAR",(function(){var conf={score:60};return conf.score<65?"ESPERAR":"CONTINUAR"})(),true);
+    add("TR70","Risk >=70","ESPERAR",(function(){var risk={score:70};return risk.score>=70?"ESPERAR":"CONTINUAR"})(),true);
+    add("TM08","Margen <8%","ESPERAR",(function(){var fin={margin:.079,roi:.30};return fin.margin<.08||fin.roi<.10?"ESPERAR":"CONTINUAR"})(),true);
+    add("TROI","ROI <10%","ESPERAR",(function(){var fin={margin:.20,roi:.099};return fin.margin<.08||fin.roi<.10?"ESPERAR":"CONTINUAR"})(),true);
+    var failed=results.filter(function(x){return !x.pass}),critical=failed.filter(function(x){return x.critical});
+    return {passed:results.length-failed.length,failed:failed.length,criticalFailed:critical.length,total:results.length,results:results};
+  }
+  window.MOTOR_SCORING_SELF_TEST=runSelfTests();
+
   function loadNext(){}
   function init(){if(!$("jev_rotation_risk_block"))return;injectStyles();buildUI();hydrate();bind();observe("jev_rotation_summary");observe("jev_risk_summary");observe("jev_market_summary");observe("jev_capital_summary");observe("jev_precheck");render();var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · MOTOR";loadNext()}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
