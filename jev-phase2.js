@@ -119,7 +119,7 @@
   function init(){
     if(!$("jev_identity"))return;injectStyles();buildUI();hydrate();bind();render();
     var out=$("p_out");if(out&&window.MutationObserver)new MutationObserver(function(){syncFinancialDisplay(evaluate())}).observe(out,{childList:true,subtree:true});
-    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 2";
+    var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 2";
     loadPhase3();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
