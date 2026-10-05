@@ -137,6 +137,7 @@
       state.eligibility.checkedAt = this.value === "NO VERIFICADO" ? null : new Date().toISOString();
       saveState();
       renderEligibility();
+      window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"eligibility",status:this.value}}));
     });
   }
 
