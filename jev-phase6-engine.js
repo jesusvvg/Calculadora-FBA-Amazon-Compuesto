@@ -72,6 +72,23 @@
     add("TR70","Risk >=70","ESPERAR",(function(){var risk={score:70};return risk.score>=70?"ESPERAR":"CONTINUAR"})(),true);
     add("TM08","Margen <8%","ESPERAR",(function(){var fin={margin:.079,roi:.30};return fin.margin<.08||fin.roi<.10?"ESPERAR":"CONTINUAR"})(),true);
     add("TROI","ROI <10%","ESPERAR",(function(){var fin={margin:.20,roi:.099};return fin.margin<.08||fin.roi<.10?"ESPERAR":"CONTINUAR"})(),true);
+    function combined(fin,rot,market,cap,risk,conf){
+      if(fin.hardDiscard)return "DESCARTAR";
+      if(conf<65||rot.dtc>120||risk>=70||fin.margin<.08||fin.roi<.10)return "ESPERAR";
+      var base=.28*fin.score+.28*rot.score+.22*market+.22*cap;
+      var pen=Math.max(0,risk-30)*.35;
+      var adjusted=Math.max(0,base-pen);
+      var factor=.60+.40*(conf/100);
+      var final=round5(adjusted*factor);
+      return final>=65&&fin.score>=55&&rot.score>=50&&risk<=65?"COMPRAR PILOTO":"ESPERAR";
+    }
+    add("C01","ROI 45% + DTC 135 días","ESPERAR",combined({score:95,margin:.25,roi:.45,hardDiscard:false},{score:30,dtc:135},90,90,25,90),true);
+    add("C02","Finanzas sólidas + riesgo extremo","ESPERAR",combined({score:90,margin:.20,roi:.35,hardDiscard:false},{score:80,dtc:40},85,85,75,90),true);
+    add("C03","Todo atractivo + confianza insuficiente","ESPERAR",combined({score:90,margin:.20,roi:.35,hardDiscard:false},{score:85,dtc:35},90,90,20,60),true);
+    add("C04","Caso equilibrado para piloto","COMPRAR PILOTO",combined({score:80,margin:.15,roi:.25,hardDiscard:false},{score:80,dtc:40},75,80,30,85),false);
+    add("C05","ROI alto pero margen insuficiente","ESPERAR",combined({score:75,margin:.07,roi:.40,hardDiscard:false},{score:85,dtc:35},80,85,25,90),true);
+    add("C06","Margen alto pero ROI insuficiente","ESPERAR",combined({score:75,margin:.20,roi:.08,hardDiscard:false},{score:85,dtc:35},80,85,25,90),true);
+
     var failed=results.filter(function(x){return !x.pass}),critical=failed.filter(function(x){return x.critical});
     return {passed:results.length-failed.length,failed:failed.length,criticalFailed:critical.length,total:results.length,results:results};
   }
