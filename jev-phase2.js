@@ -49,6 +49,7 @@
       ".jev-precheck-result .d{font-family:var(--mono);font-size:16px;font-weight:600}"+
       ".jev-precheck-result .r{font-size:12px;margin-top:4px;color:var(--ink2)}"+
       ".jev-warnings{font-size:11.5px;color:var(--ink2);margin-top:8px;line-height:1.55}"+
+      ".jev-financial-reference{font-size:11.5px;color:var(--muted);margin:-2px 0 12px;line-height:1.5}"+
       "@media(max-width:520px){.jev-precheck-row{grid-template-columns:1fr;gap:2px}}";
     document.head.appendChild(st);
   }
@@ -206,6 +207,27 @@
     return "NO VERIFICADO";
   }
 
+  function syncFinancialDisplay(r){
+    var out=$("p_out");
+    if(!out) return;
+    var verdict=out.querySelector(".verdict");
+    var blocked=(r.decision==="ESPERAR" || r.decision==="DESCARTAR");
+    if(verdict) verdict.style.display=blocked?"none":"";
+
+    var note=$("jev_financial_reference");
+    if(blocked){
+      if(!note){
+        note=document.createElement("div");
+        note.id="jev_financial_reference";
+        note.className="jev-financial-reference";
+        note.textContent="Métricas financieras visibles solo como referencia. El PRE-CHECK debe superarse antes de interpretar un veredicto económico.";
+        out.insertBefore(note,out.firstChild);
+      }
+    }else if(note){
+      note.remove();
+    }
+  }
+
   function render(){
     var pre=$("jev_precheck"); if(!pre) return;
     var v=state.verification, r=evaluate();
@@ -219,11 +241,16 @@
       '<div class="jev-precheck-row"><div class="k">Plan de salida</div><div class="v">'+exitSummary()+'</div></div>'+
       '<div class="jev-precheck-result '+r.tone+'"><div class="d">'+r.decision+'</div><div class="r">'+r.reason+'</div></div>'+
       (r.warnings&&r.warnings.length?'<div class="jev-warnings">• '+r.warnings.join('<br>• ')+'</div>':'');
+    syncFinancialDisplay(r);
   }
 
   function init(){
     if(!$("jev_identity")) return;
     injectStyles(); buildUI(); hydrate(); bind(); render();
+    var out=$("p_out");
+    if(out && window.MutationObserver){
+      new MutationObserver(function(){ syncFinancialDisplay(evaluate()); }).observe(out,{childList:true,subtree:true});
+    }
     var eyebrow=document.querySelector(".eyebrow");
     if(eyebrow) eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 2";
   }
