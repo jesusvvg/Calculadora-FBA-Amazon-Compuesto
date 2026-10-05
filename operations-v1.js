@@ -1,0 +1,24 @@
+(function(){
+"use strict";
+var KEY="amazon_compuesto_operations_v1";
+function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x:[]}catch(e){return []}}
+function save(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch(e){}}
+function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function money(x){return x==null||!isFinite(x)?"—":"$"+Number(x).toFixed(2)}
+function pct(x){return x==null||!isFinite(x)?"—":(Number(x)*100).toFixed(1)+"%"}
+function snapshot(){
+ var e=window.MOTOR_SCORING_ENGINE;if(!e)return null;
+ var s={};try{s=JSON.parse(localStorage.getItem("jev_v1")||"{}")}catch(_){}
+ var p=s.product||{},m=s.market||{},f=e.financial||{},c=e.capital||{},d=e.final||{},r=window.MOTOR_SCORING_PHASE5&&window.MOTOR_SCORING_PHASE5.rotation,k=window.MOTOR_SCORING_PHASE5&&window.MOTOR_SCORING_PHASE5.risk,mk=window.MOTOR_SCORING_MARKET&&window.MOTOR_SCORING_MARKET.result;
+ return {id:"OP-"+Date.now(),createdAt:new Date().toISOString(),status:"ABIERTA",product:{asin:p.asin||"",upcEan:p.upcEan||"",brand:p.brand||"",marketplace:p.marketplace||""},prediction:{units:d.pilotUnits||c.pilotUnits||null,investment:d.pilotCapital||c.pilotCapital||null,roi:f.roi,margin:f.margin,price:Number(document.getElementById("p_precio")&&document.getElementById("p_precio").value)||null,daysToCash:r&&r.dtc!=null?r.dtc:null,financialScore:f.score,rotationScore:r&&r.score!=null?r.score:null,marketScore:mk&&mk.score!=null?mk.score:null,riskScore:k&&k.score!=null?k.score:null,capitalEfficiency:c.score,dataConfidence:e.confidence&&e.confidence.score,decision:d.decision,score:d.score},actual:{unitsSold:null,price:null,roi:null,margin:null,returns:null,daysToCash:null,profit:null}};
+}
+function styles(){if(document.getElementById("ops-style"))return;var x=document.createElement("style");x.id="ops-style";x.textContent=".ops-box{margin:14px 0;padding:14px;border:1px solid var(--line);background:#fff}.ops-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.ops-btn{padding:9px 12px;border:1px solid var(--deep);background:#fff;cursor:pointer;font-weight:700}.ops-row{border-top:1px solid var(--line);padding:10px 0;font-size:12px;line-height:1.5}.ops-muted{color:var(--muted);font-size:11px}.ops-empty{color:var(--muted);padding-top:8px}@media(max-width:620px){.ops-head{align-items:flex-start;flex-direction:column}}";document.head.appendChild(x)}
+function render(){
+ var root=document.getElementById("operations_history");if(!root)return;var ops=load();
+ root.innerHTML='<div class="ops-head"><div><div class="cardtitle">Registro de operaciones · v1</div><div class="ops-muted">Guarda la predicción antes de comprar. El resultado real se incorporará al cerrar la operación.</div></div><button id="ops-save" class="ops-btn">Guardar predicción</button></div><div id="ops-list">'+(ops.length?ops.slice().reverse().map(function(o){var q=o.prediction||{};return '<div class="ops-row"><b>'+esc(o.id)+'</b> · '+esc(o.status)+' · '+esc(o.product.asin||"SIN ASIN")+'<br>Decisión: <b>'+esc(q.decision||"—")+'</b> · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+'<br><span class="ops-muted">Financial '+(q.financialScore==null?"—":q.financialScore)+' · Rotation '+(q.rotationScore==null?"—":q.rotationScore)+' · Market '+(q.marketScore==null?"—":q.marketScore)+' · Risk '+(q.riskScore==null?"—":q.riskScore)+' · Confidence '+(q.dataConfidence==null?"—":q.dataConfidence)+'</span></div>'}).join(""):'<div class="ops-empty">Todavía no hay operaciones registradas.</div>')+'</div>';
+ var b=document.getElementById("ops-save");if(b)b.onclick=function(){var o=snapshot();if(!o){alert("El Motor Scoring todavía no está listo.");return}if(o.prediction.decision!=="COMPRAR PILOTO"){if(!confirm("La decisión actual es "+o.prediction.decision+". ¿Guardar igualmente como registro de análisis?"))return}var a=load();a.push(o);save(a);render()};
+}
+function init(){var anchor=document.getElementById("jev_final_decision");if(!anchor||document.getElementById("operations_history"))return;styles();var d=document.createElement("div");d.id="operations_history";d.className="ops-box";anchor.parentNode.insertBefore(d,anchor.nextSibling);render()}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,50)});else setTimeout(init,50);
+window.AMAZON_COMPOUND_OPERATIONS={load:load,render:render,snapshot:snapshot};
+})();
