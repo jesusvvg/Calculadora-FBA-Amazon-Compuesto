@@ -155,7 +155,7 @@
     if(status === "AUTORIZADO") return {
       tone:"good", decision:"AUTORIZADO",
       summary:"Puede continuar al análisis.",
-      detail:"La puerta de elegibilidad está superada. Esto no significa que JEV recomiende comprar: aún faltan mercado, riesgo y capital."
+      detail:"La puerta de elegibilidad está superada. Esto no significa que el Motor Scoring recomiende comprar: aún faltan mercado, riesgo y capital."
     };
     if(status === "NO AUTORIZADO") return {
       tone:"bad", decision:"DESCARTAR",
@@ -170,7 +170,7 @@
     return {
       tone:"warn", decision:"ESPERAR",
       summary:"Verificar elegibilidad antes de comprar.",
-      detail:"Todavía no sabemos si tu cuenta puede vender este producto. JEV no emitirá una recomendación de compra con este dato sin verificar."
+      detail:"Todavía no sabemos si tu cuenta puede vender este producto. El Motor Scoring no emitirá una recomendación de compra con este dato sin verificar."
     };
   }
 
@@ -246,7 +246,7 @@
     observeFinancialOutput();
 
     var eyebrow = document.querySelector(".eyebrow");
-    if(eyebrow) eyebrow.textContent = "CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 1";
+    if(eyebrow) eyebrow.textContent = "CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 1";
   }
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
