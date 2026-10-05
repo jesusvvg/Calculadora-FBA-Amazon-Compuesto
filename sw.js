@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261005-1";
+var CACHE = "fba-calc-motor-scoring-v1-20261005-2";
 var ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ var ASSETS = [
   "./jev-phase4-market.js",
   "./jev-phase5-rotation-risk.js",
   "./jev-phase6-engine.js",
+  "./operations-v1.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
