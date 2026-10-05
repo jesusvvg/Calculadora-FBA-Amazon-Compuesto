@@ -19,6 +19,6 @@ function render(){
  var b=document.getElementById("ops-save");if(b)b.onclick=function(){var o=snapshot();if(!o){alert("El Motor Scoring todavía no está listo.");return}if(o.prediction.decision!=="COMPRAR PILOTO"){if(!confirm("La decisión actual es "+o.prediction.decision+". ¿Guardar igualmente como registro de análisis?"))return}var a=load();a.push(o);save(a);render()};
 }
 function init(attempt){attempt=attempt||0;var anchor=document.getElementById("jev_final_decision");if(!anchor){if(attempt<80)setTimeout(function(){init(attempt+1)},100);return}if(document.getElementById("operations_history"))return;styles();var d=document.createElement("div");d.id="operations_history";d.className="ops-box";anchor.parentNode.insertBefore(d,anchor.nextSibling);render()}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,50)});else setTimeout(init,50);
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(function(){init(0)},50)});else setTimeout(function(){init(0)},50);
 window.AMAZON_COMPOUND_OPERATIONS={load:load,render:render,snapshot:snapshot};
 })();
