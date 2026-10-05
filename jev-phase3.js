@@ -146,10 +146,12 @@
       warnings.map(function(w,i){return '<div class="jev-phase3-warning'+(x.exposure!==null&&x.exposure>1&&i===0?' jev-phase3-bad':'')+'">'+w+'</div>'}).join("");
   }
 
+  function loadPhase4(){if($("jev-phase4-script"))return;var s=document.createElement("script");s.id="jev-phase4-script";s.src="jev-phase4-market.js";document.body.appendChild(s)}
   function init(){
     if(!$("jev_phase2"))return;
     injectStyles();buildUI();hydrate();bind();render();
     var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · JEV v1 · FASE 3";
+    loadPhase4();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
