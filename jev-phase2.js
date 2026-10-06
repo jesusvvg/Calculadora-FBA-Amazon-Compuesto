@@ -72,12 +72,13 @@
   }
   function value(id){var el=$(id);return el?el.value:""} function nvalue(id){var v=value(id);return v===""?null:Number(v)}
   function persist(){
+    var form={match:value("jev_match"),matchNote:value("jev_match_note"),brand:value("jev_brand_policy"),brandSource:value("jev_brand_source_note"),supplyType:value("jev_supply_type"),supplier:value("jev_supplier_name"),purchaseUrl:value("jev_purchase_url"),auth:value("jev_authenticity"),documentType:value("jev_document"),returnAllowed:value("jev_return_allowed"),returnWindow:nvalue("jev_return_window"),restock:nvalue("jev_restock"),returnShipping:value("jev_return_shipping"),finalSale:value("jev_final_sale"),exitNotes:value("jev_exit_notes")};
     state=load();
     var v=state.verification;
-    v.productMatch.status=value("jev_match")||"NO VERIFICADO";v.productMatch.note=value("jev_match_note").trim();v.productMatch.checkedAt=v.productMatch.status==="NO VERIFICADO"?null:new Date().toISOString();
-    v.brandPolicy.status=value("jev_brand_policy")||"NO VERIFICADA";v.brandPolicy.source=value("jev_brand_source_note").trim();v.brandPolicy.checkedAt=v.brandPolicy.status==="NO VERIFICADA"?null:new Date().toISOString();
-    v.supply.type=value("jev_supply_type")||"RETAILER";v.supply.supplierName=value("jev_supplier_name").trim();v.supply.purchaseUrl=value("jev_purchase_url").trim();v.supply.authenticity=value("jev_authenticity")||"NO VERIFICADA";v.supply.documentType=value("jev_document")||"RECIBO RETAIL";
-    v.exitPlan.returnAllowed=value("jev_return_allowed")||"NO VERIFICADO";v.exitPlan.returnWindowDays=nvalue("jev_return_window");v.exitPlan.restockingFeePct=nvalue("jev_restock");if(v.exitPlan.restockingFeePct===null)v.exitPlan.restockingFeePct=0;v.exitPlan.returnShippingPaidBy=value("jev_return_shipping")||"NO VERIFICADO";v.exitPlan.finalSale=value("jev_final_sale")||"NO VERIFICADO";v.exitPlan.notes=value("jev_exit_notes").trim();
+    v.productMatch.status=form.match||"NO VERIFICADO";v.productMatch.note=form.matchNote.trim();v.productMatch.checkedAt=v.productMatch.status==="NO VERIFICADO"?null:new Date().toISOString();
+    v.brandPolicy.status=form.brand||"NO VERIFICADA";v.brandPolicy.source=form.brandSource.trim();v.brandPolicy.checkedAt=v.brandPolicy.status==="NO VERIFICADA"?null:new Date().toISOString();
+    v.supply.type=form.supplyType||"RETAILER";v.supply.supplierName=form.supplier.trim();v.supply.purchaseUrl=form.purchaseUrl.trim();v.supply.authenticity=form.auth||"NO VERIFICADA";v.supply.documentType=form.documentType||"RECIBO RETAIL";
+    v.exitPlan.returnAllowed=form.returnAllowed||"NO VERIFICADO";v.exitPlan.returnWindowDays=form.returnWindow;v.exitPlan.restockingFeePct=form.restock;if(v.exitPlan.restockingFeePct===null)v.exitPlan.restockingFeePct=0;v.exitPlan.returnShippingPaidBy=form.returnShipping||"NO VERIFICADO";v.exitPlan.finalSale=form.finalSale||"NO VERIFICADO";v.exitPlan.notes=form.exitNotes.trim();
     save();render();
   }
   function bind(){
