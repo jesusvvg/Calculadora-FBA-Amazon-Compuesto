@@ -36,8 +36,8 @@
   function writeCatalog(x){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(x))}catch(e){}}
   function normalizeAsin(v){return String(v||"").trim().toUpperCase()}
   function archiveActive(){var asin=normalizeAsin(activeAsin||state.product.asin);if(!asin)return;try{var current=JSON.parse(localStorage.getItem(KEY)||"{}")||{};current.product=current.product||{};current.product.asin=asin;var cat=readCatalog();cat[asin]={asin:asin,updatedAt:new Date().toISOString(),state:current};writeCatalog(cat)}catch(e){}}
-  function loadAsin(asin){asin=normalizeAsin(asin);if(!asin)return false;var rec=readCatalog()[asin];if(!rec||!rec.state)return false;try{localStorage.setItem(KEY,JSON.stringify(rec.state));state=loadState();activeAsin=asin;hydrateFields();renderEligibility();window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"asin-load",asin:asin}}));return true}catch(e){return false}}
-  function startAsin(asin){asin=normalizeAsin(asin);var fresh=cloneDefault();fresh.product.asin=asin;localStorage.setItem(KEY,JSON.stringify(fresh));state=loadState();activeAsin=asin;hydrateFields();renderEligibility();window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"asin-new",asin:asin}}))}
+  function loadAsin(asin){asin=normalizeAsin(asin);if(!asin)return false;var rec=readCatalog()[asin];if(!rec||!rec.state)return false;try{localStorage.setItem(KEY,JSON.stringify(rec.state));state=loadState();activeAsin=asin;window.location.reload();return true}catch(e){return false}}
+  function startAsin(asin){asin=normalizeAsin(asin);var fresh=cloneDefault();fresh.product.asin=asin;localStorage.setItem(KEY,JSON.stringify(fresh));state=loadState();activeAsin=asin;window.location.reload()}
   function switchAsin(asin){asin=normalizeAsin(asin);if(asin===activeAsin)return;archiveActive();if(!asin){activeAsin="";return}if(!loadAsin(asin))startAsin(asin)}
 
   function loadState(){
