@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261006-25";
+var CACHE = "fba-calc-motor-scoring-v1-20261006-26";
 var ASSETS = [
   "./",
   "./index.html",
