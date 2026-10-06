@@ -72,6 +72,7 @@
   }
   function value(id){var el=$(id);return el?el.value:""} function nvalue(id){var v=value(id);return v===""?null:Number(v)}
   function persist(){
+    state=load();
     var v=state.verification;
     v.productMatch.status=value("jev_match")||"NO VERIFICADO";v.productMatch.note=value("jev_match_note").trim();v.productMatch.checkedAt=v.productMatch.status==="NO VERIFICADO"?null:new Date().toISOString();
     v.brandPolicy.status=value("jev_brand_policy")||"NO VERIFICADA";v.brandPolicy.source=value("jev_brand_source_note").trim();v.brandPolicy.checkedAt=v.brandPolicy.status==="NO VERIFICADA"?null:new Date().toISOString();
