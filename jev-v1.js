@@ -2,6 +2,8 @@
   "use strict";
 
   var KEY = "jev_v1";
+  var CATALOG_KEY = "motor_scoring_asin_v1";
+  var activeAsin = "";
   var DEFAULT_STATE = {
     version: 1,
     product: {
@@ -29,6 +31,14 @@
 
   function cloneDefault(){ return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
   function $(id){ return document.getElementById(id); }
+
+  function readCatalog(){try{var x=JSON.parse(localStorage.getItem(CATALOG_KEY)||"{}");return x&&typeof x==="object"?x:{}}catch(e){return {}}}
+  function writeCatalog(x){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(x))}catch(e){}}
+  function normalizeAsin(v){return String(v||"").trim().toUpperCase()}
+  function archiveActive(){var asin=normalizeAsin(activeAsin||state.product.asin);if(!asin)return;try{var current=JSON.parse(localStorage.getItem(KEY)||"{}")||{};current.product=current.product||{};current.product.asin=asin;var cat=readCatalog();cat[asin]={asin:asin,updatedAt:new Date().toISOString(),state:current};writeCatalog(cat)}catch(e){}}
+  function loadAsin(asin){asin=normalizeAsin(asin);if(!asin)return false;var rec=readCatalog()[asin];if(!rec||!rec.state)return false;try{localStorage.setItem(KEY,JSON.stringify(rec.state));state=loadState();activeAsin=asin;hydrateFields();renderEligibility();window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"asin-load",asin:asin}}));return true}catch(e){return false}}
+  function startAsin(asin){asin=normalizeAsin(asin);var fresh=cloneDefault();fresh.product.asin=asin;localStorage.setItem(KEY,JSON.stringify(fresh));state=loadState();activeAsin=asin;hydrateFields();renderEligibility();window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"asin-new",asin:asin}}))}
+  function switchAsin(asin){asin=normalizeAsin(asin);if(asin===activeAsin)return;archiveActive();if(!asin){activeAsin="";return}if(!loadAsin(asin))startAsin(asin)}
 
   function loadState(){
     var state = cloneDefault();
@@ -127,15 +137,18 @@
   }
 
   function bindFields(){
-    ["jev_asin","jev_upc","jev_brand","jev_category","jev_marketplace","jev_condition"].forEach(function(id){
+    ["jev_upc","jev_brand","jev_category","jev_marketplace","jev_condition"].forEach(function(id){
       $(id).addEventListener("input", persistProduct);
       $(id).addEventListener("change", persistProduct);
     });
+    $("jev_asin").addEventListener("change",function(){switchAsin(this.value)});
+    $("jev_asin").addEventListener("blur",function(){switchAsin(this.value)});
     $("jev_eligibility").addEventListener("change", function(){
       state.eligibility.status = this.value;
       state.eligibility.source = "MANUAL";
       state.eligibility.checkedAt = this.value === "NO VERIFICADO" ? null : new Date().toISOString();
       saveState();
+      archiveActive();
       renderEligibility();
       window.dispatchEvent(new CustomEvent("motor-scoring-state-changed",{detail:{field:"eligibility",status:this.value}}));
     });
@@ -150,6 +163,8 @@
     state.product.condition = $("jev_condition").value;
     if(!state.product.stage) state.product.stage = "CANDIDATO";
     saveState();
+    activeAsin=normalizeAsin(state.product.asin);
+    archiveActive();
   }
 
   function eligibilityInfo(status){
@@ -242,6 +257,8 @@
     buildIdentityUI();
     buildGateUI();
     hydrateFields();
+    activeAsin=normalizeAsin(state.product.asin);
+    archiveActive();
     bindFields();
     renderEligibility();
     observeFinancialOutput();
