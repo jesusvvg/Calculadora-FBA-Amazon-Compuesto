@@ -76,11 +76,18 @@
   }
 
   function persist(){
+    var form={
+      displayedUnit:n("jev_displayed"),discountUnit:n("jev_discount"),taxUnit:n("jev_tax"),supplierToPrepLot:n("jev_supplier_prep"),
+      prepUnit:n("jev_prep_unit"),otherPrepLot:n("jev_prep_other"),prepToAmazonLot:n("jev_prep_amazon"),
+      returnRateExpected:n("jev_return_rate"),resellablePct:n("jev_resellable"),removalCostUnit:n("jev_removal"),prepReturnCostUnit:n("jev_return_prep"),resendCostUnit:n("jev_resend")
+    };
+    if(form.discountUnit===null)form.discountUnit=0;
+    if(form.otherPrepLot===null)form.otherPrepLot=0;
+    state=load();
     var c=state.costs.checkout,p=state.costs.prep,r=state.returns;
-    c.displayedUnit=n("jev_displayed");c.discountUnit=n("jev_discount");if(c.discountUnit===null)c.discountUnit=0;
-    c.taxUnit=n("jev_tax");c.supplierToPrepLot=n("jev_supplier_prep");
-    p.prepUnit=n("jev_prep_unit");p.otherPrepLot=n("jev_prep_other");if(p.otherPrepLot===null)p.otherPrepLot=0;p.prepToAmazonLot=n("jev_prep_amazon");
-    r.returnRateExpected=n("jev_return_rate");r.resellablePct=n("jev_resellable");r.removalCostUnit=n("jev_removal");r.prepReturnCostUnit=n("jev_return_prep");r.resendCostUnit=n("jev_resend");
+    c.displayedUnit=form.displayedUnit;c.discountUnit=form.discountUnit;c.taxUnit=form.taxUnit;c.supplierToPrepLot=form.supplierToPrepLot;
+    p.prepUnit=form.prepUnit;p.otherPrepLot=form.otherPrepLot;p.prepToAmazonLot=form.prepToAmazonLot;
+    r.returnRateExpected=form.returnRateExpected;r.resellablePct=form.resellablePct;r.removalCostUnit=form.removalCostUnit;r.prepReturnCostUnit=form.prepReturnCostUnit;r.resendCostUnit=form.resendCostUnit;
     save();render();
   }
 
