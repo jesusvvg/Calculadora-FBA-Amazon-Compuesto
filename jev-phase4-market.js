@@ -92,6 +92,7 @@
   }
 
   function persist(){
+    state=load();
     var m=state.market;
     m.bsrCurrent=n("jev_bsr");m.bsrTrend=val("jev_bsr_trend")||"NO VERIFICADO";m.salesEstimatedMonthly=n("jev_sales_month");
     m.priceAvg30=n("jev_p30");m.priceAvg90=n("jev_p90");m.priceAvg180=n("jev_p180");m.priceMinRecent=n("jev_pmin");m.priceStability=val("jev_price_stability")||"NO VERIFICADA";
