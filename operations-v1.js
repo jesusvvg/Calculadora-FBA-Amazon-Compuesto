@@ -132,6 +132,7 @@ function previewPurchase(q,units,investment){
  }else window.AMAZON_PURCHASE_PREVIEW=null;
  if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync();
 }
+function purchaseEstimate(units,investment){var e=window.MOTOR_SCORING_ENGINE,f=e&&e.evaluatePurchaseFinancial&&e.evaluatePurchaseFinancial(units,investment);return f&&f.complete?{netUnit:f.net,netTotal:f.net*units,margin:f.margin,roi:f.roi,breakEven:f.breakEven}:null}
 function clearPurchasePreview(){window.AMAZON_PURCHASE_PREVIEW=null;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}
 
 function purchaseForm(o){
@@ -155,8 +156,8 @@ function purchaseForm(o){
   if(units==null||units<1||investment==null||investment<0){alert("Completa unidades e inversión real de la compra.");return}
   units=Math.round(units);var z=overrideFor(q,units),breakdown=costBreakdown(q.costModel,units);
   if(z.isOverride&&!confirm("JEV recomendó máximo "+z.recommended+" unidad"+(z.recommended===1?"":"es")+" y estás registrando "+units+". Esto excede la recomendación del motor. ¿Confirmas el override manual?"))return;
-  o.purchase={units:units,investment:investment,costBreakdown:breakdown,registeredAt:new Date().toISOString(),override:z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null,editHistory:[]};
-  o.status="ABIERTA";var ops=load();ops.push(o);save(ops);render(true)
+  o.purchase={units:units,investment:investment,estimate:purchaseEstimate(units,investment),costBreakdown:breakdown,registeredAt:new Date().toISOString(),override:z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null,editHistory:[]};
+  o.status="ABIERTA";var ops=load();ops.push(o);save(ops);render(true,true)
  };
 }
 
@@ -183,9 +184,9 @@ function editPurchaseForm(id){
   if(z.isOverride&&!confirm("JEV recomendó máximo "+z.recommended+" unidad"+(z.recommended===1?"":"es")+" y estás dejando la compra en "+units+". ¿Confirmas el override manual?"))return;
   var old={units:buy.units,investment:buy.investment,costBreakdown:buy.costBreakdown||null,override:buy.override||null,changedAt:new Date().toISOString()};
   var history=Array.isArray(buy.editHistory)?buy.editHistory:[];history.push(old);
-  buy.units=units;buy.investment=investment;buy.costBreakdown=costBreakdown(q.costModel,units);
+  buy.units=units;buy.investment=investment;buy.estimate=purchaseEstimate(units,investment);buy.costBreakdown=costBreakdown(q.costModel,units);
   buy.override=z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null;
-  buy.editHistory=history;buy.lastEditedAt=new Date().toISOString();save(ops);render(true)
+  buy.editHistory=history;buy.lastEditedAt=new Date().toISOString();save(ops);render(true,true)
  };
 }
 
@@ -218,8 +219,8 @@ function closeForm(id){
  }
 }
 
-function render(resetEditor){
- if(resetEditor)clearPurchasePreview();
+function render(resetEditor,keepPreview){
+ if(resetEditor&&!keepPreview)clearPurchasePreview();
  var root=document.getElementById("operations_history");if(!root)return;
  var editor=document.getElementById("ops-editor");
  if(!resetEditor&&editor&&editor.childElementCount){return}
@@ -230,6 +231,7 @@ function render(resetEditor){
   return '<div class="ops-row"><b>'+esc(o.id)+'</b> · '+esc(kind)+' · '+esc(o.status)+' · '+esc(o.product.asin||"SIN ASIN")+
    '<br><b>PREDICCIÓN:</b> '+esc(q.decision||"—")+' · '+(q.units==null?'u —':'u '+q.units)+' · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+
    (buy?'<br><b>COMPRA REAL:</b> '+buy.units+' u · inversión '+money(buy.investment):'')+
+   (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
    (ov?'<div class="ops-override"><b>OVERRIDE MANUAL</b><br>Recomendación JEV: '+esc(ov.recommendedUnits)+' u · Compra registrada: '+esc(ov.actualUnits)+' u.</div>':'')+
    (o.status==="CERRADA"?'<b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN: precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+

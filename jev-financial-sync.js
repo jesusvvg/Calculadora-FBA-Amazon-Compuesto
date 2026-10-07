@@ -27,7 +27,7 @@ function sync(){
  var stats=out.querySelectorAll(".stats");
  if(stats[0]){
   var a=stats[0].querySelectorAll(".stat");
-  setStat(a[0],"Ganancia neta",money(fin.net),preview?"Por unidad · lote estimado "+money(fin.net*b.units):"Por unidad · costo real Motor Scoring",fin.net<=0?"bad":"");
+  setStat(a[0],preview?"Ganancia neta del lote":"Ganancia neta",money(preview?fin.net*b.units:fin.net),preview?money(fin.net)+" por unidad · "+b.units+" unidades":"Por unidad · costo real Motor Scoring",fin.net<=0?"bad":"");
   setStat(a[1],"Margen",pct(fin.margin),"Neta / precio · Motor Scoring",fin.margin<.08?"bad":(fin.margin<.15?"warn":""));
   setStat(a[2],"ROI",pct(fin.roi),"ROI / ciclo · Motor Scoring",fin.roi<.10?"bad":(fin.roi<.30?"warn":""));
  }
@@ -39,24 +39,26 @@ function sync(){
   setStat(c[3],"Precio mínimo",money(fin.breakEven),"Bajo esto, pierdes · Motor Scoring","");
  }
  var price=n("p_precio"),refp=Math.max(0,n("p_ref"))/100,referral=price>0?Math.max(price*refp,.30):0,fba=Math.max(0,n("p_fba")),storage=Math.max(0,n("p_almac"))*(Math.max(0,n("c_venta"))/30.4),ads=Math.max(0,n("p_ppc"));
+ var factor=preview?b.units:1;
  var cards=out.querySelectorAll(".card");
  Array.prototype.forEach.call(cards,function(card){var title=card.querySelector(".cardtitle");if(!title)return;var t=title.textContent||"";
   if(t.indexOf("Desglose de la unidad")===0||t.indexOf("Desglose de costo real")===0||t.indexOf("Desglose financiero real")===0){
-   setText(title,"Desglose financiero real · Motor Scoring");
+   setText(title,"Desglose financiero real · Motor Scoring"+(preview?" · lote de "+b.units+" unidades":""));
    var tbody=card.querySelector("tbody");var html=
-    '<tr><td>Precio de venta</td><td class="n r">'+money(price)+'</td></tr>'+
-    '<tr><td>Referral fee</td><td class="n r">−'+money(referral)+'</td></tr>'+
-    '<tr><td>FBA fee</td><td class="n r">−'+money(fba)+'</td></tr>'+
-    '<tr><td>Producto / checkout<div class="sub">por unidad</div></td><td class="n r">−'+money(b.checkout)+'</td></tr>'+
-    '<tr><td>Prep Center<div class="sub">por unidad</div></td><td class="n r">−'+money(b.prepUnit)+'</td></tr>'+
-    '<tr><td>Flete proveedor → Prep<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.supplier/b.units)+'</td></tr>'+
-    '<tr><td>Otros costos Prep<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.other/b.units)+'</td></tr>'+
-    '<tr><td>Flete Prep → Amazon<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.prepAmazon/b.units)+'</td></tr>'+
-    '<tr><td>Almacenamiento esperado</td><td class="n r">−'+money(storage)+'</td></tr>'+
-    '<tr><td>Publicidad</td><td class="n r">−'+money(ads)+'</td></tr>'+
-    '<tr><td>Devoluciones esperadas<div class="sub">costo esperado por unidad</div></td><td class="n r">−'+money(fin.returnCost)+'</td></tr>'+
-    '<tr><td style="font-weight:500">Costo real de entrada / unidad</td><td class="n r" style="font-weight:500">'+money(b.landed)+'</td></tr>'+
-    '<tr><td style="font-weight:500;border-bottom:none">Ganancia neta / unidad</td><td class="n r" style="border-bottom:none;font-size:15px">'+money(fin.net)+'</td></tr>';
+    '<tr><td>Precio de venta</td><td class="n r">'+money(price*factor)+'</td></tr>'+
+    '<tr><td>Referral fee</td><td class="n r">−'+money(referral*factor)+'</td></tr>'+
+    '<tr><td>FBA fee</td><td class="n r">−'+money(fba*factor)+'</td></tr>'+
+    '<tr><td>Producto / checkout<div class="sub">por unidad</div></td><td class="n r">−'+money(b.checkout*factor)+'</td></tr>'+
+    '<tr><td>Prep Center<div class="sub">por unidad</div></td><td class="n r">−'+money(b.prepUnit*factor)+'</td></tr>'+
+    '<tr><td>Flete proveedor → Prep<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.supplier/b.units*factor)+'</td></tr>'+
+    '<tr><td>Otros costos Prep<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.other/b.units*factor)+'</td></tr>'+
+    '<tr><td>Flete Prep → Amazon<div class="sub">lote ÷ '+b.units+' unidades</div></td><td class="n r">−'+money(b.prepAmazon/b.units*factor)+'</td></tr>'+
+    '<tr><td>Almacenamiento esperado</td><td class="n r">−'+money(storage*factor)+'</td></tr>'+
+    '<tr><td>Publicidad</td><td class="n r">−'+money(ads*factor)+'</td></tr>'+
+    '<tr><td>Devoluciones esperadas<div class="sub">costo esperado por unidad</div></td><td class="n r">−'+money(fin.returnCost*factor)+'</td></tr>'+
+    '<tr><td style="font-weight:500">Costo real de entrada / unidad</td><td class="n r" style="font-weight:500">'+money(b.landed*factor)+'</td></tr>'+
+    '<tr><td style="font-weight:500;border-bottom:none">Ganancia neta / unidad</td><td class="n r" style="border-bottom:none;font-size:15px">'+money(fin.net*factor)+'</td></tr>';
+   if(preview)html=html.replace(/por unidad/g,'total del lote').replace(/lote ÷ [0-9]+ unidades/g,'total del lote').replace('Costo real de entrada / unidad','Capital total de entrada').replace('Ganancia neta / unidad','Ganancia neta del lote');
    if(tbody&&tbody._motorScoringHtml!==html){tbody.innerHTML=html;tbody._motorScoringHtml=html;}
   }
   if(t.indexOf("Escenarios ·")===0||t.indexOf("Por qué este veredicto")===0){card.style.display="none"}
