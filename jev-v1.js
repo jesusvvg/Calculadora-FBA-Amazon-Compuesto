@@ -251,6 +251,15 @@
     observer.observe(out, {childList:true, subtree:true});
   }
 
+  function loadFinancialSync(){
+    if(document.getElementById("jev-financial-sync-loader")) return;
+    var s=document.createElement("script");
+    s.id="jev-financial-sync-loader";
+    s.src="jev-financial-sync.js?v=36";
+    s.async=true;
+    document.body.appendChild(s);
+  }
+
   function init(){
     if(!document.querySelector("#p-prod .grid")) return;
     injectStyles();
@@ -262,6 +271,7 @@
     bindFields();
     renderEligibility();
     observeFinancialOutput();
+    loadFinancialSync();
 
     var eyebrow = document.querySelector(".eyebrow");
     if(eyebrow) eyebrow.textContent = "CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 1";
