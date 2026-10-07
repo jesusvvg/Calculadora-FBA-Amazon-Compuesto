@@ -125,6 +125,15 @@ function costBreakdownHtml(q,units){
  '</div>';
 }
 
+function previewPurchase(q,units,investment){
+ var b=costBreakdown(q.costModel,units);
+ if(b&&units>0&&isFinite(investment)&&investment>=0){
+  window.AMAZON_PURCHASE_PREVIEW={units:units,checkout:b.productUnitUSD,supplier:b.supplierToPrepLotUSD,prepUnit:b.prepUnit,other:b.otherPrepLot,prepAmazon:b.prepToAmazonLot,fixedLot:b.fixedLotTotal,total:investment,landed:investment/units};
+ }else window.AMAZON_PURCHASE_PREVIEW=null;
+ if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync();
+}
+function clearPurchasePreview(){window.AMAZON_PURCHASE_PREVIEW=null;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}
+
 function purchaseForm(o){
  var q=o.prediction||{},host=document.getElementById("ops-editor");if(!host)return;
  var initial=projectedInvestment(q,q.units);
@@ -133,12 +142,14 @@ function purchaseForm(o){
   var units=num(document.getElementById("op-buy-units").value),w=document.getElementById("op-buy-warning"),inv=document.getElementById("op-buy-investment"),bd=document.getElementById("op-buy-breakdown");
   if(inv&&units!=null&&units>=1){var projected=projectedInvestment(q,units);if(projected!=null&&isFinite(projected))inv.value=Number(projected).toFixed(2)}
   if(bd)bd.innerHTML=costBreakdownHtml(q,units);
+  previewPurchase(q,units,inv&&inv.value!==""?Number(inv.value):NaN);
   if(!w)return;
   var z=overrideFor(q,units);
   w.innerHTML=(z.isOverride)?'<div class="ops-override"><b>Override:</b> JEV recomendó máximo '+esc(z.recommended)+' unidad'+(z.recommended===1?'':'es')+' y estás registrando '+esc(Math.round(units))+'. Si confirmas, la operación quedará marcada como override manual.</div>':''
  }
+ var investmentInput=document.getElementById("op-buy-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-buy-units").value),this.value!==""?Number(this.value):NaN)});
  var ui=document.getElementById("op-buy-units");if(ui)ui.addEventListener("input",refreshPurchase);refreshPurchase();
- document.getElementById("op-buy-cancel").onclick=function(){host.innerHTML=""};
+ document.getElementById("op-buy-cancel").onclick=function(){host.innerHTML="";clearPurchasePreview()};
  document.getElementById("op-buy-confirm").onclick=function(){
   var units=num(document.getElementById("op-buy-units").value),investment=num(document.getElementById("op-buy-investment").value);
   if(units==null||units<1||investment==null||investment<0){alert("Completa unidades e inversión real de la compra.");return}
@@ -157,12 +168,14 @@ function editPurchaseForm(id){
   var units=num(document.getElementById("op-edit-units").value),w=document.getElementById("op-edit-warning"),inv=document.getElementById("op-edit-investment"),bd=document.getElementById("op-edit-breakdown");
   if(inv&&units!=null&&units>=1){var projected=projectedInvestment(q,units);if(projected!=null&&isFinite(projected))inv.value=Number(projected).toFixed(2)}
   if(bd)bd.innerHTML=costBreakdownHtml(q,units);
+  previewPurchase(q,units,inv&&inv.value!==""?Number(inv.value):NaN);
   if(!w)return;
   var z=overrideFor(q,units);
   w.innerHTML=z.isOverride?'<div class="ops-override"><b>Override:</b> JEV recomendó máximo '+esc(z.recommended)+' unidad'+(z.recommended===1?'':'es')+' y estás editando la compra a '+esc(Math.round(units))+'.</div>':''
  }
+ var investmentInput=document.getElementById("op-edit-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN)});
  var ui=document.getElementById("op-edit-units");if(ui)ui.addEventListener("input",refreshEdit);refreshEdit();
- document.getElementById("op-edit-cancel").onclick=function(){host.innerHTML=""};
+ document.getElementById("op-edit-cancel").onclick=function(){host.innerHTML="";clearPurchasePreview()};
  document.getElementById("op-edit-confirm").onclick=function(){
   var units=num(document.getElementById("op-edit-units").value),investment=num(document.getElementById("op-edit-investment").value);
   if(units==null||units<1||investment==null||investment<0){alert("Completa unidades e inversión real.");return}
@@ -194,7 +207,7 @@ function closeForm(id){
  '<label>Days to Cash real<input id="op-dtc" type="number" min="0" value="'+esc(a.daysToCash==null?"":a.daysToCash)+'"></label>'+
  '<label>Beneficio/pérdida total US$<input id="op-profit" type="number" step="0.01" value="'+esc(a.profit==null?"":a.profit)+'"></label></div><button id="op-confirm" class="ops-btn">Cerrar operación</button> <button id="op-cancel" class="ops-btn">Cancelar</button></div>';
  var host=document.getElementById("ops-editor");host.innerHTML=html;
- document.getElementById("op-cancel").onclick=function(){host.innerHTML=""};
+ document.getElementById("op-cancel").onclick=function(){host.innerHTML="";clearPurchasePreview()};
  document.getElementById("op-confirm").onclick=function(){
   var units=num(document.getElementById("op-units").value),price=num(document.getElementById("op-price").value),roi=num(document.getElementById("op-roi").value),margin=num(document.getElementById("op-margin").value),returns=num(document.getElementById("op-returns").value),dtc=num(document.getElementById("op-dtc").value),profit=num(document.getElementById("op-profit").value);
   if(units==null||price==null||roi==null||margin==null||returns==null||dtc==null||profit==null){alert("Completa todos los resultados reales antes de cerrar.");return}
@@ -206,6 +219,7 @@ function closeForm(id){
 }
 
 function render(resetEditor){
+ if(resetEditor)clearPurchasePreview();
  var root=document.getElementById("operations_history");if(!root)return;
  var editor=document.getElementById("ops-editor");
  if(!resetEditor&&editor&&editor.childElementCount){return}

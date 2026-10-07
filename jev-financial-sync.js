@@ -19,16 +19,20 @@ function realCostBreakdown(){
 function sync(){
  var engine=window.MOTOR_SCORING_ENGINE,out=$("p_out");if(!engine||!out)return;
  var fin=engine.financial||{},cap=engine.capital||{},final=engine.final||{},b=realCostBreakdown();
+ var preview=window.AMAZON_PURCHASE_PREVIEW;
+ if(preview&&typeof engine.evaluatePurchaseFinancial==="function"){b=preview;fin=engine.evaluatePurchaseFinancial(b.units,b.total);}
  if(!fin.complete||!b)return;
+ var context=$("purchase-summary-context");if(preview&&!context){context=document.createElement("div");context.id="purchase-summary-context";context.className="note";out.insertBefore(context,out.firstChild)}
+ if(context){if(preview)setText(context,"Estimación de tu compra: "+b.units+" unidades · la recomendación original del motor se conserva.");else context.remove();}
  var stats=out.querySelectorAll(".stats");
  if(stats[0]){
   var a=stats[0].querySelectorAll(".stat");
-  setStat(a[0],"Ganancia neta",money(fin.net),"Por unidad · costo real Motor Scoring",fin.net<=0?"bad":"");
+  setStat(a[0],"Ganancia neta",money(fin.net),preview?"Por unidad · lote estimado "+money(fin.net*b.units):"Por unidad · costo real Motor Scoring",fin.net<=0?"bad":"");
   setStat(a[1],"Margen",pct(fin.margin),"Neta / precio · Motor Scoring",fin.margin<.08?"bad":(fin.margin<.15?"warn":""));
   setStat(a[2],"ROI",pct(fin.roi),"ROI / ciclo · Motor Scoring",fin.roi<.10?"bad":(fin.roi<.30?"warn":""));
  }
  if(stats[1]){
-  var c=stats[1].querySelectorAll(".stat"),budget=n("p_presu"),capital=cap.requestedCapital!=null?cap.requestedCapital:b.total,free=budget-capital;
+  var c=stats[1].querySelectorAll(".stat"),budget=n("p_presu"),capital=preview?b.total:(cap.requestedCapital!=null?cap.requestedCapital:b.total),free=budget-capital;
   setStat(c[0],"Capital comprometido",money(capital),budget>0?pct(capital/budget)+" del presupuesto · costo real":"Costo real",budget>0&&capital/budget>.6?"warn":"");
   setStat(c[1],"Capital libre",money(free),"Presupuesto − capital comprometido",free<0?"bad":"");
   setStat(c[2],"Costo real / unidad",money(b.landed),"Producto + Prep + fletes","");
