@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261006-31";
+var CACHE = "fba-calc-motor-scoring-v1-20261006-32";
 var ASSETS = [
   "./",
   "./index.html",
@@ -8,7 +8,7 @@ var ASSETS = [
   "./jev-phase4-market.js",
   "./jev-phase5-rotation-risk.js",
   "./jev-phase6-engine.js",
-  "./operations-v1.js?v=31",
+  "./operations-v1.js?v=32",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -31,13 +31,13 @@ self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
   var url = new URL(e.request.url);
   if (url.pathname.endsWith("/operations-v1.js")) {
-    var fresh = new Request("./operations-v1.js?v=31", {cache:"no-store"});
+    var fresh = new Request("./operations-v1.js?v=32", {cache:"no-store"});
     e.respondWith(fetch(fresh).then(function (res) {
       var copy = res.clone();
-      caches.open(CACHE).then(function (c) { c.put("./operations-v1.js?v=31", copy); });
+      caches.open(CACHE).then(function (c) { c.put("./operations-v1.js?v=32", copy); });
       return res;
     }).catch(function () {
-      return caches.match("./operations-v1.js?v=31");
+      return caches.match("./operations-v1.js?v=32");
     }));
     return;
   }
