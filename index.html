@@ -414,11 +414,12 @@ window.addEventListener("beforeinstallprompt",function(e){
   e.preventDefault();deferred=e;$("install").style.display="block"});
 $("install").addEventListener("click",function(){
   if(!deferred)return;deferred.prompt();
-  deferred.userChoice.then(function(){deferred=null;$("install").style.display="none"})});
+  deferred.userChoice.then(function(){deferred=null;$("install").style.display="none")});
 window.addEventListener("appinstalled",function(){$("install").style.display="none"});
 </script>
 <script src="jev-v1.js"></script>
 <script src="jev-phase2.js"></script>
 <script src="operations-v1.js"></script>
+<script src="jev-financial-sync.js?v=35"></script>
 </body>
 </html>
