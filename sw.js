@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261006-34";
+var CACHE = "fba-calc-motor-scoring-v1-20261006-35";
 var ASSETS = [
   "./",
   "./index.html",
@@ -8,8 +8,8 @@ var ASSETS = [
   "./jev-phase4-market.js",
   "./jev-phase5-rotation-risk.js",
   "./jev-phase6-engine.js",
-  "./operations-v1.js?v=34",
-  "./jev-financial-sync.js?v=34",
+  "./operations-v1.js",
+  "./jev-financial-sync.js?v=35",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -28,35 +28,8 @@ self.addEventListener("activate", function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 
-function combinedOperationsResponse() {
-  return Promise.all([
-    fetch(new Request("./operations-v1.js?v=34", {cache:"no-store"})).then(function(r){return r.text()}),
-    fetch(new Request("./jev-financial-sync.js?v=34", {cache:"no-store"})).then(function(r){return r.text()})
-  ]).then(function(parts){
-    return new Response(parts[0]+"\n;\n"+parts[1], {
-      headers:{"Content-Type":"application/javascript; charset=utf-8","Cache-Control":"no-store"}
-    });
-  });
-}
-
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
-  var url = new URL(e.request.url);
-
-  if (url.pathname.endsWith("/operations-v1.js")) {
-    e.respondWith(combinedOperationsResponse().catch(function () {
-      return caches.match("./operations-v1.js?v=34");
-    }));
-    return;
-  }
-
-  if (url.pathname.endsWith("/jev-financial-sync.js")) {
-    e.respondWith(fetch(new Request("./jev-financial-sync.js?v=34", {cache:"no-store"})).catch(function () {
-      return caches.match("./jev-financial-sync.js?v=34");
-    }));
-    return;
-  }
-
   e.respondWith(
     fetch(e.request, {cache:"no-store"}).then(function (res) {
       var copy = res.clone();
