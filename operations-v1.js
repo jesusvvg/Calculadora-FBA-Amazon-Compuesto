@@ -3,7 +3,7 @@
 var KEY="amazon_compuesto_operations_v1";
 function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x:[]}catch(e){return []}}
 function save(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch(e){}}
-function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;","&gt;":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(x){return x==null||!isFinite(x)?"—":"$"+Number(x).toFixed(2)}
 function num(x){var n=Number(x);return isFinite(n)?n:null}
 function delta(actual,pred){return actual==null||pred==null?null:actual-pred}
