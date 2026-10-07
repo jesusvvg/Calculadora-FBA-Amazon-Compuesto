@@ -232,7 +232,7 @@ function init(attempt){
  if(!anchor){if(attempt<80)setTimeout(function(){init(attempt+1)},100);return}
  if(document.getElementById("operations_history"))return;
  styles();var d=document.createElement("div");d.id="operations_history";d.className="ops-box";anchor.parentNode.insertBefore(d,anchor.nextSibling);render();
- if(window.MutationObserver)new MutationObserver(function(){render()}).observe(anchor,{childList:true,subtree:true,characterData:true})
+ if(window.MutationObserver)new MutationObserver(function(){var b=document.getElementById("ops-buy"),e=window.MOTOR_SCORING_ENGINE;if(b)b.disabled=!(e&&e.final&&e.final.decision==="COMPRAR PILOTO")}).observe(anchor,{childList:true,subtree:true,characterData:true})
 }
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(function(){init(0)},50)});else setTimeout(function(){init(0)},50);

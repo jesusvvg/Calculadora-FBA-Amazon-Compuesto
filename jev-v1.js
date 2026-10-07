@@ -255,7 +255,7 @@
     if(document.getElementById("jev-financial-sync-loader")) return;
     var s=document.createElement("script");
     s.id="jev-financial-sync-loader";
-    s.src="jev-financial-sync.js?v=36";
+    s.src="jev-financial-sync.js?v=39";
     s.async=true;
     document.body.appendChild(s);
   }
