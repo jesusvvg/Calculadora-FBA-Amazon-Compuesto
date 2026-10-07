@@ -145,7 +145,7 @@ function purchaseForm(o){
   units=Math.round(units);var z=overrideFor(q,units),breakdown=costBreakdown(q.costModel,units);
   if(z.isOverride&&!confirm("JEV recomendó máximo "+z.recommended+" unidad"+(z.recommended===1?"":"es")+" y estás registrando "+units+". Esto excede la recomendación del motor. ¿Confirmas el override manual?"))return;
   o.purchase={units:units,investment:investment,costBreakdown:breakdown,registeredAt:new Date().toISOString(),override:z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null,editHistory:[]};
-  o.status="ABIERTA";var ops=load();ops.push(o);save(ops);render()
+  o.status="ABIERTA";var ops=load();ops.push(o);save(ops);render(true)
  };
 }
 
@@ -172,7 +172,7 @@ function editPurchaseForm(id){
   var history=Array.isArray(buy.editHistory)?buy.editHistory:[];history.push(old);
   buy.units=units;buy.investment=investment;buy.costBreakdown=costBreakdown(q.costModel,units);
   buy.override=z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null;
-  buy.editHistory=history;buy.lastEditedAt=new Date().toISOString();save(ops);render()
+  buy.editHistory=history;buy.lastEditedAt=new Date().toISOString();save(ops);render(true)
  };
 }
 
@@ -180,7 +180,7 @@ function deleteOperation(id){
  var ops=load(),o=ops.filter(function(x){return x.id===id})[0];if(!o)return;
  if(o.status!=="ABIERTA"){alert("Solo se pueden eliminar operaciones abiertas desde este control.");return}
  if(!confirm("¿Eliminar definitivamente "+id+" del historial local? Esta acción no se puede deshacer."))return;
- save(ops.filter(function(x){return x.id!==id}));render()
+ save(ops.filter(function(x){return x.id!==id}));render(true)
 }
 
 function closeForm(id){
@@ -201,12 +201,14 @@ function closeForm(id){
   o.actual={unitsSold:units,price:price,roi:roi/100,margin:margin/100,returns:returns,daysToCash:dtc,profit:profit};
   o.status="CERRADA";o.closedAt=new Date().toISOString();
   o.variance={price:delta(o.actual.price,q.price),roi:delta(o.actual.roi,q.roi),margin:delta(o.actual.margin,q.margin),daysToCash:delta(o.actual.daysToCash,q.daysToCash)};
-  save(ops);render()
+  save(ops);render(true)
  }
 }
 
-function render(){
+function render(resetEditor){
  var root=document.getElementById("operations_history");if(!root)return;
+ var editor=document.getElementById("ops-editor");
+ if(!resetEditor&&editor&&editor.childElementCount){return}
  var ops=load(),engine=window.MOTOR_SCORING_ENGINE,canBuy=!!(engine&&engine.final&&engine.final.decision==="COMPRAR PILOTO");
  root.innerHTML='<div class="ops-head"><div><div class="cardtitle">Registro de análisis y operaciones · v1</div><div class="ops-muted">ANÁLISIS guarda lo que JEV pensó. COMPRA abre seguimiento real y permite comparar predicción vs resultado.</div></div><div class="ops-actions"><button id="ops-analysis" class="ops-btn">Guardar análisis</button><button id="ops-buy" class="ops-btn" '+(canBuy?'':'disabled')+'>Registrar compra</button></div></div><div id="ops-list">'+
  (ops.length?ops.slice().reverse().map(function(o){
@@ -223,7 +225,7 @@ function render(){
  Array.prototype.forEach.call(document.querySelectorAll(".ops-close-btn"),function(x){x.onclick=function(){closeForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-edit-btn"),function(x){x.onclick=function(){editPurchaseForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-delete-btn"),function(x){x.onclick=function(){deleteOperation(this.getAttribute("data-id"))}});
- var a=document.getElementById("ops-analysis");if(a)a.onclick=function(){var o=snapshot("ANALISIS");if(!o){alert("El Motor Scoring todavía no está listo.");return}var list=load();list.push(o);save(list);render()};
+ var a=document.getElementById("ops-analysis");if(a)a.onclick=function(){var o=snapshot("ANALISIS");if(!o){alert("El Motor Scoring todavía no está listo.");return}var list=load();list.push(o);save(list);render(true)};
  var b=document.getElementById("ops-buy");if(b)b.onclick=function(){var o=snapshot("COMPRA");if(!o||o.prediction.decision!=="COMPRAR PILOTO"){alert("JEV no recomienda compra con la decisión actual.");return}purchaseForm(o)};
 }
 
