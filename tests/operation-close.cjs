@@ -188,6 +188,51 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     incomplete[KEY]=JSON.stringify(missing);w.close();({w}=await mount(incomplete));
     assert.equal(w.document.querySelector('#global-realized-losses .v').textContent,'—');
     assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'—');
+    // An analysis remains visible beside the decision even when the open-purchase summary is zero.
+    w.close();({w}=await mount(userCase));
+    const analysisState=JSON.parse(w.localStorage.getItem('jev_v1'));
+    analysisState.eligibility={status:'AUTORIZADO'};
+    analysisState.verification={productMatch:{status:'MATCH CONFIRMADO'},brandPolicy:{status:'AUTORIZACIÓN EXPLÍCITA'},supply:{authenticity:'VERIFICADA'},exitPlan:{returnAllowed:'SÍ',finalSale:'NO'}};
+    analysisState.returns={returnRateExpected:0,resellablePct:100,removalCostUnit:0,prepReturnCostUnit:0,resendCostUnit:0};
+    analysisState.market={checkedAt:new Date().toISOString()};
+    w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));
+    // Fixed synthetic market signals isolate the existing engine's financial rendering.
+    function predictionInput(id,value){
+      input(w,id,value);
+      w.MOTOR_SCORING_MARKET={result:{score:90,coverage:1}};
+      w.MOTOR_SCORING_PHASE5={rotation:{score:90,coverage:1,dtc:61},risk:{score:20,coverage:1}};
+      input(w,'p_fba',5); // The financial field renders the engine with the fixed external signals.
+    }
+    for(const [id,value]of Object.entries({p_precio:39.99,p_ref:15,p_fba:5,p_almac:0,p_ppc:0,c_venta:0,p_unid:1}))w.document.getElementById(id).value=value;
+    predictionInput('p_precio',39.99);w.JEV_FINANCIAL_SYNC.sync();
+    assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'COMPRAR PILOTO',JSON.stringify(w.MOTOR_SCORING_ENGINE));
+    const estimateBefore=operations(w);
+    const format=v=>'$'+Number(v).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+    assert.equal(w.document.querySelector('#motor-scoring-prediction').closest('#jev_final_decision').id,'jev_final_decision');
+    assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-units'),'1');
+    assert.equal(w.document.querySelector('#prediction-roi .v').textContent,(w.MOTOR_SCORING_ENGINE.financial.roi*100).toFixed(1)+'%');
+    assert.equal(w.document.querySelector('#prediction-net .v').textContent,format(w.MOTOR_SCORING_ENGINE.financial.net));
+    assert.equal(w.document.querySelector('#prediction-capital .v').textContent,'$19,00');
+    assert.equal(w.document.querySelector('#prediction-available .v').textContent,'$286,43');
+    assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().net,0,'analysis profit never enters the open summary');
+    assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43,'prediction does not reserve capital');
+    const firstROI=w.document.querySelector('#prediction-roi .v').textContent;
+    predictionInput('p_precio',35);assert.notEqual(w.document.querySelector('#prediction-roi .v').textContent,firstROI,'price changes update prediction');
+    predictionInput('p_precio',39.99);predictionInput('p_unid',8);
+    const recommended=w.MOTOR_SCORING_ENGINE.final;
+    assert.equal(recommended.decision,'COMPRAR PILOTO');assert.equal(recommended.pilotUnits,5);
+    const pilotFin=w.MOTOR_SCORING_ENGINE.evaluatePurchaseFinancial(5,recommended.pilotCapital);
+    assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-units'),'5');
+    assert.equal(w.document.querySelector('#prediction-roi .v').textContent,(pilotFin.roi*100).toFixed(1)+'%','ROI uses recommended quantity and its fixed-lot costs');
+    assert.equal(w.document.querySelector('#prediction-net .v').textContent,format(pilotFin.net*5));
+    assert.equal(w.document.querySelector('#prediction-capital .v').textContent,'$63,00');
+    assert.deepEqual(operations(w),estimateBefore,'forecast never edits saved open or closed operations');
+    analysisState.eligibility.status='NO VERIFICADO';w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));predictionInput('p_precio',39.99);
+    assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'ESPERAR');
+    assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-kind'),'analysis','waiting analysis is not labelled a recommended purchase');
+    analysisState.returns.returnRateExpected=null;w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));predictionInput('p_precio',39.99);
+    assert.equal(w.document.getElementById('prediction-roi'),null,'missing inputs never display a fabricated forecast');
+    assert(w.document.getElementById('motor-scoring-prediction').textContent.includes('incompleta'));
     // Detect concurrent edits and storage failures without losing either lot.
     w.close();({w,alerts}=await mount());closeEditor(w,'OP-EIGHT');fillClose(w);
     const changed=operations(w);changed[0].purchase.units=7;w.localStorage.setItem(KEY,JSON.stringify(changed));
