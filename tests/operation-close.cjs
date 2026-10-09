@@ -225,6 +225,8 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'$113,93');
     assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$245,98','costs include the zero-sales loss once');
     assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'68.3%');
+    assert.equal(w.document.getElementById('global-realized-margin').textContent,'31.7%','actual margin includes losses and excludes the open forecast');
+    assert(w.document.getElementById('global-realized-net').textContent.includes('Ganancia neta ÷ facturación × 100'));
     assert.equal(w.document.querySelector('#global-total-capital .v').textContent,'$413,93');
     assert.equal(w.document.querySelector('#global-capital-for-purchases .v').textContent,'$294,93','free capital deducts open purchases and reserve');
     assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$39,99','open sales stay separate from actual costs');
@@ -238,10 +240,17 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#global-capital-for-purchases .v').textContent,'$294,93');
     assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$245,98');
     // With zero real sales a loss still has costs, but no percentage denominator.
+    assert.equal(w.document.getElementById('global-realized-margin').textContent,'31.7%','real margin survives reload');
+    const beforeLastClose=operations(w);
+    closeEditor(w,'OP-FOURTH');fillClose(w,{units:1,price:39.99,profit:9.99});confirmClose(w);await wait(400);
+    assert.equal(w.document.getElementById('global-realized-margin').textContent,'31.0%','closing the next sale automatically updates net profit over actual sales');
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$399,90');
+    assert.deepEqual(operations(w).slice(0,3),beforeLastClose.slice(0,3),'margin updates leave other operations unchanged');
     const zeroSales=clone(currentReload);zeroSales[KEY]=JSON.stringify([currentOps[1]]);
     w.close();({w}=await mount(zeroSales));
     assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$19,00');
     assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'—');
+    assert.equal(w.document.getElementById('global-realized-margin').textContent,'—','zero sales never produce an infinite margin');
     // Legacy closes may already have been included manually in the budget.
     const legacy=initial(),old=JSON.parse(legacy[KEY]);old[0].status='CERRADA';old[0].actual={profit:40};
     legacy[KEY]=JSON.stringify(old);delete legacy[SELECTED];w.close();({w}=await mount(legacy));
@@ -261,6 +270,7 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#global-realized-losses .v').textContent,'—');
     assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'—');
     assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'—','missing net result cannot produce costs');
+    assert.equal(w.document.getElementById('global-realized-margin').textContent,'—','missing actual profit cannot produce a margin');
     // An analysis remains visible beside the decision even when the open-purchase summary is zero.
     w.close();({w}=await mount(userCase));
     const analysisState=JSON.parse(w.localStorage.getItem('jev_v1'));
