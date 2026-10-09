@@ -33,8 +33,10 @@ function sync(){
  }
  if(stats[1]){
   var c=stats[1].querySelectorAll(".stat"),budget=preview&&preview.budget!=null?preview.budget:n("p_presu"),capital=preview?b.total:(cap.requestedCapital!=null?cap.requestedCapital:b.total),free=budget-capital;
+  var balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(preview&&preview.operationId,capital);
+  if(balance&&balance.complete){budget=balance.budget;free=balance.afterPurchase;}else free=null;
   setStat(c[0],"Capital comprometido",money(capital),budget>0?pct(capital/budget)+" del presupuesto · costo real":"Costo real",budget>0&&capital/budget>.6?"warn":"");
-  setStat(c[1],"Capital libre",money(free),"Presupuesto − capital comprometido",free<0?"bad":"");
+  setStat(c[1],"Disponible tras este lote",money(free),balance&&balance.complete?"Descuenta otras compras y reserva de "+money(balance.reserve):"Balance global incompleto",free!=null&&free<0?"bad":"");
   setStat(c[2],"Costo real / unidad",money(b.landed),"Producto + Prep + fletes","");
   setStat(c[3],"Precio mínimo",money(fin.breakEven),"Bajo esto, pierdes · Motor Scoring","");
  }

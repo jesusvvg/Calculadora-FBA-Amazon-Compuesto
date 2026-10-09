@@ -3,7 +3,7 @@
 var KEY="amazon_compuesto_operations_v1",SELECTED_KEY="amazon_compuesto_selected_purchase_v1";
 
 function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x:[]}catch(e){return []}}
-function save(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch(e){}}
+function save(x){try{localStorage.setItem(KEY,JSON.stringify(x));window.dispatchEvent(new Event("motor-scoring-operations-changed"))}catch(e){}}
 function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(x){return x==null||!isFinite(x)?"—":"$"+Number(x).toFixed(2)}
 function num(x){var n=Number(x);return isFinite(n)?n:null}
@@ -161,6 +161,14 @@ function restoreSelected(){
 function forgetSelected(){try{localStorage.removeItem(SELECTED_KEY)}catch(e){}clearPurchasePreview()}
 function cancelPreview(){clearPurchasePreview();restoreSelected()}
 
+
+function checkPurchaseCapital(investment,excludeId){
+ var balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(excludeId,investment);
+ if(!balance||!balance.complete){alert(balance?balance.reason:"El balance de capital todavía no está listo.");return false}
+ if(balance.afterPurchase < -0.005){alert("Esta compra requiere "+money(investment)+", pero solo hay "+money(balance.available)+" disponibles después de compras abiertas y reserva.");return false}
+ return true;
+}
+
 function purchaseForm(o){
  var q=o.prediction||{},host=document.getElementById("ops-editor");if(!host)return;
  var initial=projectedInvestment(q,q.units);
@@ -180,7 +188,7 @@ function purchaseForm(o){
  document.getElementById("op-buy-confirm").onclick=function(){
   var units=num(document.getElementById("op-buy-units").value),investment=num(document.getElementById("op-buy-investment").value);
   if(units==null||units<1||investment==null||investment<0){alert("Completa unidades e inversión real de la compra.");return}
-  units=Math.round(units);var z=overrideFor(q,units),breakdown=costBreakdown(q.costModel,units);
+  units=Math.round(units);if(!checkPurchaseCapital(investment,null))return;var z=overrideFor(q,units),breakdown=costBreakdown(q.costModel,units);
   if(z.isOverride&&!confirm("JEV recomendó máximo "+z.recommended+" unidad"+(z.recommended===1?"":"es")+" y estás registrando "+units+". Esto excede la recomendación del motor. ¿Confirmas el override manual?"))return;
   o.purchase={units:units,investment:investment,estimate:purchaseEstimate(units,investment),costBreakdown:breakdown,registeredAt:new Date().toISOString(),override:z.isOverride?{manual:true,type:"UNIDADES_SOBRE_RECOMENDACION",recommendedUnits:z.recommended,actualUnits:units,confirmedAt:new Date().toISOString()}:null,editHistory:[]};
   o.status="ABIERTA";o.purchase.summary=freezePreview(o.id);var ops=load();ops.push(o);save(ops);selectPurchase(o,o.purchase.summary);render(true,true)
@@ -196,17 +204,18 @@ function editPurchaseForm(id){
   if(recalculate!==false&&inv&&units!=null&&units>=1){var projected=projectedInvestment(q,units);if(projected!=null&&isFinite(projected))inv.value=Number(projected).toFixed(2)}
   if(bd)bd.innerHTML=costBreakdownHtml(q,units);
   previewPurchase(q,units,inv&&inv.value!==""?Number(inv.value):NaN);
+  if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}
   if(!w)return;
   var z=overrideFor(q,units);
   w.innerHTML=z.isOverride?'<div class="ops-override"><b>Override:</b> JEV recomendó máximo '+esc(z.recommended)+' unidad'+(z.recommended===1?'':'es')+' y estás editando la compra a '+esc(Math.round(units))+'.</div>':''
  }
- var investmentInput=document.getElementById("op-edit-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN)});
+ var investmentInput=document.getElementById("op-edit-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN);if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}});
  var ui=document.getElementById("op-edit-units");if(ui)ui.addEventListener("input",refreshEdit);refreshEdit(false);
  document.getElementById("op-edit-cancel").onclick=function(){host.innerHTML="";cancelPreview()};
  document.getElementById("op-edit-confirm").onclick=function(){
   var units=num(document.getElementById("op-edit-units").value),investment=num(document.getElementById("op-edit-investment").value);
   if(units==null||units<1||investment==null||investment<0){alert("Completa unidades e inversión real.");return}
-  units=Math.round(units);var z=overrideFor(q,units);
+  units=Math.round(units);if(!checkPurchaseCapital(investment,id))return;var z=overrideFor(q,units);
   if(z.isOverride&&!confirm("JEV recomendó máximo "+z.recommended+" unidad"+(z.recommended===1?"":"es")+" y estás dejando la compra en "+units+". ¿Confirmas el override manual?"))return;
   var old={units:buy.units,investment:buy.investment,costBreakdown:buy.costBreakdown||null,override:buy.override||null,changedAt:new Date().toISOString()};
   var history=Array.isArray(buy.editHistory)?buy.editHistory:[];history.push(old);
