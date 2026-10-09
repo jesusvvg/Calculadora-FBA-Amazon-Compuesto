@@ -20,10 +20,10 @@ function sync(){
  var engine=window.MOTOR_SCORING_ENGINE,out=$("p_out");if(!engine||!out)return;
  var fin=engine.financial||{},cap=engine.capital||{},final=engine.final||{},b=realCostBreakdown();
  var preview=window.AMAZON_PURCHASE_PREVIEW;
- if(preview&&typeof engine.evaluatePurchaseFinancial==="function"){b=preview;fin=engine.evaluatePurchaseFinancial(b.units,b.total);}
+ if(preview&&typeof engine.evaluatePurchaseFinancial==="function"){b=preview;fin=preview.financial||engine.evaluatePurchaseFinancial(b.units,b.total);}
  if(!fin.complete||!b)return;
  var context=$("purchase-summary-context");if(preview&&!context){context=document.createElement("div");context.id="purchase-summary-context";context.className="note";out.insertBefore(context,out.firstChild)}
- if(context){if(preview)setText(context,"Estimación de tu compra: "+b.units+" unidades · la recomendación original del motor se conserva.");else context.remove();}
+ if(context){if(preview)setText(context,(preview.operationId?"Compra "+preview.operationId+" · estimación guardada: ":"Estimación de tu compra: ")+b.units+" unidades · la recomendación original del motor se conserva.");else context.remove();}
  var stats=out.querySelectorAll(".stats");
  if(stats[0]){
   var a=stats[0].querySelectorAll(".stat");
@@ -32,13 +32,14 @@ function sync(){
   setStat(a[2],"ROI",pct(fin.roi),"ROI / ciclo · Motor Scoring",fin.roi<.10?"bad":(fin.roi<.30?"warn":""));
  }
  if(stats[1]){
-  var c=stats[1].querySelectorAll(".stat"),budget=n("p_presu"),capital=preview?b.total:(cap.requestedCapital!=null?cap.requestedCapital:b.total),free=budget-capital;
+  var c=stats[1].querySelectorAll(".stat"),budget=preview&&preview.budget!=null?preview.budget:n("p_presu"),capital=preview?b.total:(cap.requestedCapital!=null?cap.requestedCapital:b.total),free=budget-capital;
   setStat(c[0],"Capital comprometido",money(capital),budget>0?pct(capital/budget)+" del presupuesto · costo real":"Costo real",budget>0&&capital/budget>.6?"warn":"");
   setStat(c[1],"Capital libre",money(free),"Presupuesto − capital comprometido",free<0?"bad":"");
   setStat(c[2],"Costo real / unidad",money(b.landed),"Producto + Prep + fletes","");
   setStat(c[3],"Precio mínimo",money(fin.breakEven),"Bajo esto, pierdes · Motor Scoring","");
  }
- var price=n("p_precio"),refp=Math.max(0,n("p_ref"))/100,referral=price>0?Math.max(price*refp,.30):0,fba=Math.max(0,n("p_fba")),storage=Math.max(0,n("p_almac"))*(Math.max(0,n("c_venta"))/30.4),ads=Math.max(0,n("p_ppc"));
+ function input(id){return preview&&preview.inputs&&preview.inputs[id]!=null?Number(preview.inputs[id]):n(id)}
+ var price=input("p_precio"),refp=Math.max(0,input("p_ref"))/100,referral=price>0?Math.max(price*refp,.30):0,fba=Math.max(0,input("p_fba")),storage=Math.max(0,input("p_almac"))*(Math.max(0,input("c_venta"))/30.4),ads=Math.max(0,input("p_ppc"));
  var factor=preview?b.units:1;
  var cards=out.querySelectorAll(".card");
  Array.prototype.forEach.call(cards,function(card){var title=card.querySelector(".cardtitle");if(!title)return;var t=title.textContent||"";
