@@ -99,7 +99,7 @@ function styles(){
  var x=document.createElement("style");x.id="ops-style";
  x.textContent=".ops-box{margin:14px 0;padding:14px;border:1px solid var(--line);background:#fff}.ops-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.ops-actions{display:flex;gap:8px;flex-wrap:wrap}.ops-btn{padding:9px 12px;border:1px solid var(--deep);background:#fff;cursor:pointer;font-weight:700}.ops-btn:disabled{opacity:.45;cursor:not-allowed}.ops-row{border-top:1px solid var(--line);padding:10px 0;font-size:12px;line-height:1.5}.ops-row .ops-actions{margin-top:9px}.ops-muted{color:var(--muted);font-size:11px}.ops-empty{color:var(--muted);padding-top:8px}.ops-close{margin-top:10px;padding:12px;border:1px solid var(--line);background:#fafafa}.ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.ops-grid label{font-size:11px;color:var(--muted)}.ops-grid input{width:100%;box-sizing:border-box;padding:8px;margin-top:4px;border:1px solid var(--line);background:#fff;color:var(--ink)}.ops-override{display:block;clear:both;margin:8px 0 10px;padding:8px 10px;border-left:3px solid var(--warn);background:var(--warnBg);font-size:11px;line-height:1.45}.ops-costs{margin:10px 0;padding:10px;border:1px solid var(--line);background:#fff;font-size:11px;line-height:1.55}.ops-costs-row{display:flex;justify-content:space-between;gap:12px}.ops-costs-total{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-weight:700}.ops-danger{border-color:var(--bad);color:var(--bad)}@media(max-width:620px){.ops-head{align-items:flex-start;flex-direction:column}.ops-grid{grid-template-columns:1fr}}";
  document.head.appendChild(x)
- var archiveStyle=document.createElement("style");archiveStyle.textContent=".ops-closed-record{border-top:1px solid var(--line)}.ops-closed-record>summary{cursor:pointer;font-size:12px;font-weight:700;padding:10px 0}.ops-closed-record .ops-row{border-top:0}.ops-box[hidden]{display:none}";document.head.appendChild(archiveStyle);
+ var archiveStyle=document.createElement("style");archiveStyle.textContent=".ops-archive-fold>summary{cursor:pointer;margin-bottom:0}.ops-archive-fold[open]>summary{margin-bottom:10px}.ops-closed-record{border-top:1px solid var(--line)}.ops-closed-record>summary{cursor:pointer;font-size:12px;font-weight:700;padding:10px 0}.ops-closed-record .ops-row{border-top:0}.ops-box[hidden]{display:none}";document.head.appendChild(archiveStyle);
 }
 
 function editorHost(id){
@@ -322,7 +322,7 @@ function renderClosed(ops){
  if(!archive){archive=document.createElement("div");archive.id="closed_operations_history";archive.className="ops-box";section.appendChild(archive)}
  var closed=ops.filter(function(o){return o.status==="CERRADA"}).slice().reverse();
  archive.hidden=!closed.length;
- var html=closed.length?'<div class="cardtitle">Operaciones cerradas · consulta</div>'+closed.map(function(o){return '<details class="ops-closed-record" data-id="'+esc(o.id)+'"><summary>'+esc(o.id)+'</summary>'+operationRowHtml(o)+'</details>'}).join(""):"";
+ var html=closed.length?'<details class="ops-archive-fold"><summary class="cardtitle">Operaciones cerradas · consulta</summary>'+closed.map(function(o){return '<details class="ops-closed-record" data-id="'+esc(o.id)+'"><summary>'+esc(o.id)+'</summary>'+operationRowHtml(o)+'</details>'}).join("")+'</details>':"";
  if(archive._motorScoringHtml!==html){archive.innerHTML=html;archive._motorScoringHtml=html;}
 }
 
