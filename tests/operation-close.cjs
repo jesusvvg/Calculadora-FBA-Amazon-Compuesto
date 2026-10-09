@@ -215,6 +215,33 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$319,92');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43);
     assert(w.document.getElementById('jev_global_capital').textContent.includes('Ganancias reales incorporadas: $124,43 · Pérdidas reales incorporadas: $-19,00'));
+    // User's current ledger: three closed lots and a fourth still open.
+    const currentCase=clone(userCase),currentOps=JSON.parse(currentCase[KEY]);
+    const third=lot('OP-THIRD',1,19);third.status='CERRADA';
+    third.actual={unitsSold:1,price:39.99,sales:39.99,returns:0,daysToCash:61,profit:8.50,capitalSettled:true};
+    const fourth=lot('OP-FOURTH',1,19);currentOps.push(third,fourth);
+    currentCase[KEY]=JSON.stringify(currentOps);w.close();({w}=await mount(currentCase));
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$359,91');
+    assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'$113,93');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$245,98','costs include the zero-sales loss once');
+    assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'68.3%');
+    assert.equal(w.document.querySelector('#global-total-capital .v').textContent,'$413,93');
+    assert.equal(w.document.querySelector('#global-capital-for-purchases .v').textContent,'$294,93','free capital deducts open purchases and reserve');
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$39,99','open sales stay separate from actual costs');
+    const currentLedger=w.localStorage.getItem(KEY);
+    input(w,'jev_reserve','50');await wait(300);
+    assert.equal(w.document.querySelector('#global-capital-for-purchases .v').textContent,'$344,93','available card follows shared reserve');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$245,98');
+    assert.equal(w.localStorage.getItem(KEY),currentLedger,'summary updates never modify stored operations');
+    input(w,'jev_reserve','100');await wait(300);
+    const currentReload=storage(w);w.close();({w}=await mount(currentReload));
+    assert.equal(w.document.querySelector('#global-capital-for-purchases .v').textContent,'$294,93');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$245,98');
+    // With zero real sales a loss still has costs, but no percentage denominator.
+    const zeroSales=clone(currentReload);zeroSales[KEY]=JSON.stringify([currentOps[1]]);
+    w.close();({w}=await mount(zeroSales));
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$19,00');
+    assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'—');
     // Legacy closes may already have been included manually in the budget.
     const legacy=initial(),old=JSON.parse(legacy[KEY]);old[0].status='CERRADA';old[0].actual={profit:40};
     legacy[KEY]=JSON.stringify(old);delete legacy[SELECTED];w.close();({w}=await mount(legacy));
@@ -224,6 +251,8 @@ function checkTabs(w){
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().realizedGains,40);
     assert.equal(w.AMAZON_CAPITAL_BALANCE().realizedGains,0,'legacy gains stay separate from incorporated capital');
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'—','unknown historical sales are not silently zero');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'—','unknown real sales cannot produce costs');
+    assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'—');
     old[0].actual.unitsSold=8;old[0].actual.price=20;w.localStorage.setItem(KEY,JSON.stringify(old));w.JEV_FINANCIAL_SYNC.sync();
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$160,00','legacy real sales derive from actual units and price');
     // Missing real results must not render a misleading zero for accumulated losses.
@@ -231,6 +260,7 @@ function checkTabs(w){
     incomplete[KEY]=JSON.stringify(missing);w.close();({w}=await mount(incomplete));
     assert.equal(w.document.querySelector('#global-realized-losses .v').textContent,'—');
     assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'—');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'—','missing net result cannot produce costs');
     // An analysis remains visible beside the decision even when the open-purchase summary is zero.
     w.close();({w}=await mount(userCase));
     const analysisState=JSON.parse(w.localStorage.getItem('jev_v1'));

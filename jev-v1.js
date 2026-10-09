@@ -280,7 +280,7 @@
     if(document.getElementById("jev-financial-sync-loader")) return;
     var s=document.createElement("script");
     s.id="jev-financial-sync-loader";
-    s.src="jev-financial-sync.js?v=54";
+    s.src="jev-financial-sync.js?v=55";
     s.async=true;
     document.body.appendChild(s);
   }
