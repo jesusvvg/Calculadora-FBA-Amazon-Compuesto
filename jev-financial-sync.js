@@ -19,11 +19,11 @@ function realCostBreakdown(){
 
 function globalTotals(){
  var ops;try{ops=JSON.parse(localStorage.getItem("amazon_compuesto_operations_v1")||"[]");if(!Array.isArray(ops))throw new Error("history")}catch(e){return {count:0,invalid:true}}
- var t={count:0,closedCount:0,realized:0,realizedComplete:true,units:0,investment:0,net:0,sales:0,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
+ var t={count:0,closedCount:0,realized:0,realizedGains:0,realizedLosses:0,realizedComplete:true,units:0,investment:0,net:0,sales:0,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
  function number(v){return v!==null&&v!==undefined&&v!==""&&isFinite(Number(v))?Number(v):null}
  ops.forEach(function(o){
   if(!o)return;
-  if(o.status==="CERRADA"&&o.purchase){t.closedCount++;var profit=o.actual&&number(o.actual.profit);if(profit===null||profit===undefined)t.realizedComplete=false;else t.realized+=profit;}
+  if(o.status==="CERRADA"&&o.purchase){t.closedCount++;var profit=o.actual&&number(o.actual.profit);if(profit===null||profit===undefined)t.realizedComplete=false;else {t.realized+=profit;if(profit>0)t.realizedGains+=profit;else if(profit<0)t.realizedLosses+=profit;}}
   if(o.status!=="ABIERTA")return;t.count++;
   var buy=o.purchase||{},b=buy.summary,f=b&&b.financial,inputs=b&&b.inputs,u=number(buy.units),investment=number(buy.investment);
   if(u===null||u<=0||investment===null||investment<0){t.complete=false;t.breakdownComplete=false;return}
@@ -49,7 +49,10 @@ function syncGlobal(out){
  var real=$("closed-operations-summary");
  if(t.closedCount){
   if(!real){real=document.createElement("div");real.id="closed-operations-summary";real.className="card";out.appendChild(real);}
-  var realHtml='<div class="cardtitle">Resultados reales · operaciones cerradas</div><div class="stats"><div class="stat"><div class="l">Ganancia/pérdida neta real</div><div class="v '+(t.realized<0?'bad':'')+'">'+money(t.realizedComplete?t.realized:null)+'</div><div class="s">'+t.closedCount+' lotes cerrados · independiente de las estimaciones</div></div><div class="stat"><div class="l">Resultado incorporado al capital</div><div class="v">'+money(balance&&balance.complete?balance.realized:null)+'</div><div class="s">Solo cierres con liquidación confirmada</div></div><div id="global-total-capital" class="stat"><div class="l">Capital total actualizado</div><div class="v '+(balance&&balance.totalCapital<0?'bad':'')+'">'+money(balance&&balance.complete?balance.totalCapital:null)+'</div><div class="s">'+(balance&&balance.complete?'Presupuesto base: '+money(balance.budget)+' · Ganancia/pérdida real incorporada: '+money(balance.realized):'Balance de capital incompleto')+'</div></div></div>';
+  var realHtml='<div class="cardtitle">Resultados reales · operaciones cerradas</div><div class="stats">'+
+   '<div id="global-realized-gains" class="stat"><div class="l">Ganancias reales acumuladas</div><div class="v">'+money(t.realizedComplete?t.realizedGains:null)+'</div><div class="s">Suma de resultados positivos de lotes cerrados</div></div>'+
+   '<div id="global-realized-losses" class="stat"><div class="l">Pérdidas reales acumuladas</div><div class="v '+(t.realizedLosses<0?'bad':'')+'">'+money(t.realizedComplete?t.realizedLosses:null)+'</div><div class="s">Suma de resultados negativos de lotes cerrados</div></div>'+
+   '<div id="global-realized-net" class="stat"><div class="l">Ganancia/pérdida neta real</div><div class="v '+(t.realized<0?'bad':'')+'">'+money(t.realizedComplete?t.realized:null)+'</div><div class="s">Ganancias + pérdidas · '+t.closedCount+' lotes cerrados</div></div><div class="stat"><div class="l">Resultado incorporado al capital</div><div class="v">'+money(balance&&balance.complete?balance.realized:null)+'</div><div class="s">Solo cierres con liquidación confirmada</div></div><div id="global-total-capital" class="stat"><div class="l">Capital total actualizado</div><div class="v '+(balance&&balance.totalCapital<0?'bad':'')+'">'+money(balance&&balance.complete?balance.totalCapital:null)+'</div><div class="s">'+(balance&&balance.complete?'Presupuesto base: '+money(balance.budget)+' · Ganancia/pérdida real incorporada: '+money(balance.realized):'Balance de capital incompleto')+'</div></div></div>';
   if(real._motorScoringHtml!==realHtml){real.innerHTML=realHtml;real._motorScoringHtml=realHtml;}
  }else if(real)real.remove();
  var stats=out.querySelectorAll(".stats"),a=stats[0]&&stats[0].querySelectorAll(".stat"),c=stats[1]&&stats[1].querySelectorAll(".stat");

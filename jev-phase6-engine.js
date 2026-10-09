@@ -11,7 +11,7 @@
 
   // The budget is the capital basis; only explicitly settled real profits change it.
   function capitalBalance(excludeId,proposed){
-    var budget=nval("p_presu"),reserve=read().capital.reserveTarget,ops,committed=0,count=0,realized=0;
+    var budget=nval("p_presu"),reserve=read().capital.reserveTarget,ops,committed=0,count=0,realized=0,realizedGains=0,realizedLosses=0;
     reserve=reserve===null||reserve===undefined||reserve===""?null:Number(reserve);
     if(budget===null||budget<0||reserve===null||!isFinite(reserve)||reserve<0)return {complete:false,reason:"Define presupuesto total y reserva no negativos."};
     try{ops=JSON.parse(localStorage.getItem("amazon_compuesto_operations_v1")||"[]");if(!Array.isArray(ops))throw new Error("historial");}catch(e){return {complete:false,reason:"No se puede leer el historial; capital disponible desconocido."};}
@@ -19,7 +19,7 @@
       var o=ops[i];if(!o)continue;
       if(o.status==="CERRADA"&&o.actual&&o.actual.capitalSettled===true){
         var profit=o.actual.profit;if(profit===null||profit===undefined||profit===""||!isFinite(Number(profit)))return {complete:false,reason:"Un cierre liquidado no tiene ganancia o pérdida válida."};
-        realized+=Number(profit);
+        profit=Number(profit);realized+=profit;if(profit>0)realizedGains+=profit;else if(profit<0)realizedLosses+=profit;
       }
       if(o.status!=="ABIERTA")continue;
       if(!o.purchase||o.purchase.investment===null||o.purchase.investment===undefined||o.purchase.investment==="")return {complete:false,reason:"Una compra abierta no tiene inversión válida."};
@@ -29,12 +29,12 @@
     var totalCapital=budget+realized,available=totalCapital-reserve-committed;
     if(proposed!==undefined&&proposed!==null){proposed=Number(proposed);if(!isFinite(proposed)||proposed<0)return {complete:false,reason:"Inversión propuesta inválida."};}
     else proposed=0;
-    return {complete:true,budget:budget,realized:realized,totalCapital:totalCapital,reserve:reserve,committed:committed,openCount:count,available:available,afterPurchase:available-proposed};
+    return {complete:true,budget:budget,realized:realized,realizedGains:realizedGains,realizedLosses:realizedLosses,totalCapital:totalCapital,reserve:reserve,committed:committed,openCount:count,available:available,afterPurchase:available-proposed};
   }
   window.AMAZON_CAPITAL_BALANCE=capitalBalance;
   function renderCapitalBalance(){
     var host=$("jev_global_capital");if(!host)return;var b=capitalBalance(),html=b.complete?
-      '<b>Capital global</b><br>Presupuesto base: '+money(b.budget)+' · Ganancia/pérdida real incorporada: '+money(b.realized)+'<br>Capital total actualizado: '+money(b.totalCapital)+' · Invertido: '+money(b.committed)+' · Reserva: '+money(b.reserve)+'<br><b>Disponible para nuevas compras: '+money(b.available)+'</b> · '+b.openCount+' operación(es) abierta(s)<div class="hint">Solo incorpora resultados reales de cierres liquidados; las estimaciones no aumentan el capital. No vuelvas a sumar estos resultados al presupuesto base. Los cierres anteriores sin confirmación de liquidación conservan el tratamiento manual previo.</div>':
+      '<b>Capital global</b><br>Presupuesto base: '+money(b.budget)+'<br>Ganancias reales incorporadas: '+money(b.realizedGains)+' · Pérdidas reales incorporadas: '+money(b.realizedLosses)+'<br>Ganancia/pérdida real incorporada: '+money(b.realized)+'<br>Capital total actualizado: '+money(b.totalCapital)+' · Invertido: '+money(b.committed)+' · Reserva: '+money(b.reserve)+'<br><b>Disponible para nuevas compras: '+money(b.available)+'</b> · '+b.openCount+' operación(es) abierta(s)<div class="hint">Solo incorpora resultados reales de cierres liquidados; las estimaciones no aumentan el capital. No vuelvas a sumar estos resultados al presupuesto base. Los cierres anteriores sin confirmación de liquidación conservan el tratamiento manual previo.</div>':
       '<b>Capital global incompleto</b><br>'+b.reason;
     if(host.innerHTML!==html)host.innerHTML=html;
   }
