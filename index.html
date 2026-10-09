@@ -28,9 +28,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15p
 .head{border-bottom:2px solid var(--ink);padding-bottom:10px}
 .eyebrow{font-family:var(--mono);font-size:11px;color:var(--deep);letter-spacing:.14em}
 h1{font-size:22px;font-weight:500;margin:5px 0 0}
-.tabs{display:flex;border-bottom:1px solid var(--lineStrong);margin-bottom:18px}
+.tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--lineStrong);margin-bottom:18px}
 .tab{font-family:var(--sans);font-size:14px;padding:11px 16px;border:none;border-bottom:2px solid transparent;
-  background:none;color:var(--muted);cursor:pointer;min-height:44px}
+  background:none;color:var(--muted);cursor:pointer;min-height:44px;flex-shrink:0;white-space:nowrap}
 .tab[aria-selected="true"]{border-bottom-color:var(--deep);color:var(--ink);font-weight:500}
 .grid{display:grid;grid-template-columns:1fr;gap:22px;align-items:start}
 @media(min-width:820px){.grid{grid-template-columns:minmax(230px,1fr) minmax(300px,1.7fr)}}
@@ -96,9 +96,11 @@ strong.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
     <h1>Calculadora de ciclo y análisis de producto</h1>
   </div>
 
-  <div class="tabs" role="tablist">
-    <button class="tab" id="t-ciclo" role="tab" aria-selected="true" aria-controls="p-ciclo">Ciclo de caja</button>
-    <button class="tab" id="t-prod" role="tab" aria-selected="false" aria-controls="p-prod">Análisis de producto</button>
+  <div class="tabs" role="tablist" aria-label="Secciones de la calculadora">
+    <button type="button" class="tab" id="t-ciclo" role="tab" aria-selected="true" aria-controls="p-ciclo">Análisis de caja</button>
+    <button type="button" class="tab" id="t-prod" role="tab" aria-selected="false" aria-controls="p-prod" tabindex="-1">Análisis de producto</button>
+    <button type="button" class="tab" id="t-purchases" role="tab" aria-selected="false" aria-controls="p-purchases" tabindex="-1">Resumen de compras</button>
+    <button type="button" class="tab" id="t-closed" role="tab" aria-selected="false" aria-controls="p-closed" tabindex="-1">Operaciones cerradas · consultas</button>
   </div>
 
   <section id="p-ciclo" role="tabpanel" aria-labelledby="t-ciclo">
@@ -162,8 +164,9 @@ strong.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
           <div class="fbox"><input type="number" inputmode="numeric" id="p_unid"></div></label>
 
         <div class="sect">Capital y operación</div>
-        <label class="f"><div class="flabel">Presupuesto disponible</div>
-          <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" id="p_presu"></div></label>
+        <label class="f"><div class="flabel">Presupuesto base de capital</div>
+          <div class="fbox"><span class="fix">US$</span><input type="number" inputmode="decimal" id="p_presu"></div>
+          <div class="hint">Los nuevos cierres liquidados suman ganancias o restan pérdidas automáticamente. No las agregues otra vez aquí.</div></label>
         <label class="f"><div class="flabel">Plan de vendedor</div>
           <select id="p_plan">
             <option value="pro">Profesional · US$39,99 al mes</option>
@@ -191,6 +194,10 @@ strong.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
       </div>
       <div id="p_out"></div>
     </div>
+  </section>
+  <section id="p-purchases" role="tabpanel" aria-labelledby="t-purchases" class="hide"></section>
+  <section id="p-closed" role="tabpanel" aria-labelledby="t-closed" class="hide">
+    <div id="closed-operations-empty" class="note">No hay operaciones cerradas para consultar.</div>
   </section>
 </div>
 
@@ -387,11 +394,11 @@ function syncMoneda(){var m=$("p_moneda").value;
   $("p_tchint").textContent="Cuántos "+m+" por 1 USD";}
 
 function tab(id){
-  var ciclo=id==="ciclo";
-  $("t-ciclo").setAttribute("aria-selected",ciclo);
-  $("t-prod").setAttribute("aria-selected",!ciclo);
-  $("p-ciclo").className=ciclo?"":"hide";
-  $("p-prod").className=ciclo?"hide":"";
+  var sections=["ciclo","prod","purchases","closed"];if(sections.indexOf(id)<0)return;
+  sections.forEach(function(key){var active=key===id,button=$("t-"+key),panel=$("p-"+key);
+    button.setAttribute("aria-selected",String(active));button.tabIndex=active?0:-1;
+    panel.classList.toggle("hide",!active);panel.hidden=!active;
+  });
 }
 
 document.addEventListener("DOMContentLoaded",function(){
@@ -399,8 +406,19 @@ document.addEventListener("DOMContentLoaded",function(){
   IDS.forEach(function(k){$(k).addEventListener("input",render);$(k).addEventListener("change",render)});
   $("p_moneda").addEventListener("change",function(){
     $("p_tc").value=String(MONEDAS[$("p_moneda").value]||1);syncMoneda();render()});
-  $("t-ciclo").addEventListener("click",function(){tab("ciclo")});
-  $("t-prod").addEventListener("click",function(){tab("prod")});
+  var sections=["ciclo","prod","purchases","closed"];
+  sections.forEach(function(key,index){var button=$("t-"+key);
+    button.addEventListener("click",function(){tab(key)});
+    button.addEventListener("keydown",function(event){var next;
+      if(event.key==="ArrowRight")next=(index+1)%sections.length;
+      else if(event.key==="ArrowLeft")next=(index+sections.length-1)%sections.length;
+      else if(event.key==="Home")next=0;
+      else if(event.key==="End")next=sections.length-1;
+      else return;
+      event.preventDefault();tab(sections[next]);$("t-"+sections[next]).focus();
+    });
+  });
+  tab("ciclo");
   $("p_toggle").addEventListener("click",function(){
     var f=$("p_fino"), open=f.className==="hide";
     f.className=open?"":"hide";
@@ -417,5 +435,8 @@ $("install").addEventListener("click",function(){
   deferred.userChoice.then(function(){deferred=null;$("install").style.display="none"})});
 window.addEventListener("appinstalled",function(){$("install").style.display="none"});
 </script>
+<script src="jev-v1.js"></script>
+<script src="jev-phase2.js"></script>
+<script src="operations-v1.js?v=57"></script>
 </body>
 </html>
