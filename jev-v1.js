@@ -33,12 +33,35 @@
   function $(id){ return document.getElementById(id); }
 
   function readCatalog(){try{var x=JSON.parse(localStorage.getItem(CATALOG_KEY)||"{}");return x&&typeof x==="object"?x:{}}catch(e){return {}}}
-  function writeCatalog(x){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(x))}catch(e){}}
+  function writeCatalog(x){try{localStorage.setItem(CATALOG_KEY,JSON.stringify(x));return true}catch(e){return false}}
   function normalizeAsin(v){return String(v||"").trim().toUpperCase()}
-  function archiveActive(){var asin=normalizeAsin(activeAsin||state.product.asin);if(!asin)return;try{var current=JSON.parse(localStorage.getItem(KEY)||"{}")||{};current.product=current.product||{};current.product.asin=asin;var cat=readCatalog();cat[asin]={asin:asin,updatedAt:new Date().toISOString(),state:current};writeCatalog(cat)}catch(e){}}
-  function loadAsin(asin){asin=normalizeAsin(asin);if(!asin)return false;var rec=readCatalog()[asin];if(!rec||!rec.state)return false;try{localStorage.setItem(KEY,JSON.stringify(rec.state));state=loadState();activeAsin=asin;window.location.reload();return true}catch(e){return false}}
-  function startAsin(asin){asin=normalizeAsin(asin);var fresh=cloneDefault();fresh.product.asin=asin;localStorage.setItem(KEY,JSON.stringify(fresh));state=loadState();activeAsin=asin;window.location.reload()}
-  function switchAsin(asin){asin=normalizeAsin(asin);if(asin===activeAsin)return;archiveActive();if(!asin){activeAsin="";return}if(!loadAsin(asin))startAsin(asin)}
+  // Product inputs travel with the ASIN; account capital and payment settings stay shared.
+  var GLOBAL_INPUTS=["p_presu","p_plan","c_corte1","c_corte2","c_banco"];
+  function financialInputs(){var values={};(window.IDS||[]).forEach(function(id){var field=$(id);if(field)values[id]=field.value});return values}
+  function archiveActive(){var asin=normalizeAsin(activeAsin||state.product.asin);if(!asin)return true;try{var current=JSON.parse(localStorage.getItem(KEY)||"{}")||{};current.product=current.product||{};current.product.asin=asin;var cat=readCatalog();cat[asin]={asin:asin,updatedAt:new Date().toISOString(),state:current,inputs:financialInputs()};return writeCatalog(cat)}catch(e){return false}}
+  function switchAsin(asin){
+    asin=normalizeAsin(asin);
+    if(!asin||asin===activeAsin){$("jev_asin").value=activeAsin;return}
+    if(!archiveActive()){ $("jev_asin").value=activeAsin;alert("No se pudo guardar el producto actual. No se cambió de ASIN.");return }
+    var previous=localStorage.getItem(KEY),previousInputs=localStorage.getItem("fba_v2"),current;
+    try{
+      current=JSON.parse(previous||"{}");
+      var rec=readCatalog()[asin],next=rec&&rec.state?JSON.parse(JSON.stringify(rec.state)):cloneDefault();
+      next.product=next.product||{};next.product.asin=asin;
+      next.capital=JSON.parse(JSON.stringify(current.capital||{}));
+      var inputs=Object.assign({},window.DEF||{}),shared=financialInputs();
+      // Old catalog records have no input snapshot; never borrow the preceding ASIN's price.
+      inputs.p_precio="";inputs.p_cogs="";inputs.p_flete="";inputs.p_unid="1";
+      if(rec&&rec.inputs)Object.keys(inputs).forEach(function(id){if(GLOBAL_INPUTS.indexOf(id)<0&&rec.inputs[id]!==undefined)inputs[id]=rec.inputs[id]});
+      GLOBAL_INPUTS.forEach(function(id){if(shared[id]!==undefined)inputs[id]=shared[id]});
+      localStorage.setItem("fba_v2",JSON.stringify(inputs));
+      localStorage.setItem(KEY,JSON.stringify(next));
+    }catch(e){
+      try{if(previousInputs===null)localStorage.removeItem("fba_v2");else localStorage.setItem("fba_v2",previousInputs);if(previous===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previous)}catch(restoreError){}
+      $("jev_asin").value=activeAsin;alert("No se pudo cargar el otro ASIN. Se conserva el producto actual.");return;
+    }
+    state=loadState();activeAsin=asin;window.location.reload();
+  }
 
   function loadState(){
     var state = cloneDefault();
@@ -155,7 +178,7 @@
   }
 
   function persistProduct(){
-    state.product.asin = $("jev_asin").value.trim();
+    state.product.asin = activeAsin;
     state.product.upcEan = $("jev_upc").value.trim();
     state.product.brand = $("jev_brand").value.trim();
     state.product.category = $("jev_category").value.trim();
