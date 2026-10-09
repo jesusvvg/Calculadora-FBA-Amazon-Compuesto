@@ -11,6 +11,8 @@ function delta(actual,pred){return actual==null||pred==null?null:actual-pred}
 function pct(x){return x==null||!isFinite(x)?"—":(Number(x)*100).toFixed(1)+"%"}
 function estimatedSales(units,summary){var u=num(units),price=num(summary&&summary.inputs&&summary.inputs.p_precio);return u!=null&&u>=0&&price!=null&&price>=0?u*price:null}
 function realSales(actual){var a=actual||{},sales=num(a.sales),units=num(a.unitsSold),price=num(a.price);if(sales!=null)return sales>=0?sales:null;return units!=null&&units>=0&&price!=null&&price>=0?units*price:null}
+function totalCosts(sales,profit){sales=num(sales);profit=num(profit);return sales!=null&&sales>=0&&profit!=null?sales-profit:null}
+function costShare(sales,costs){sales=num(sales);return sales!=null&&sales>0&&costs!=null?costs/sales:null}
 
 function readJevState(){try{var s=JSON.parse(localStorage.getItem("jev_v1")||"{}");return s&&typeof s==="object"?s:{}}catch(e){return {}}}
 function domNumber(id){var el=document.getElementById(id);if(!el||el.value==="")return null;var n=Number(el.value);return isFinite(n)?n:null}
@@ -138,9 +140,11 @@ function costBreakdownHtml(q,units){
 
 
 function lotFiguresHtml(units,investment,financial,summary){
- var f=financial||{},netTotal=f.netTotal!=null?f.netTotal:(f.net!=null?f.net*units:null),netUnit=f.netUnit!=null?f.netUnit:f.net;
+ var f=financial||{},netTotal=f.netTotal!=null?f.netTotal:(f.net!=null?f.net*units:null),netUnit=f.netUnit!=null?f.netUnit:f.net,sales=estimatedSales(units,summary),costs=totalCosts(sales,netTotal);
  return '<div class="ops-costs"><b>Resumen de este lote · '+esc(units)+' unidades</b>'+
  '<div class="ops-costs-row"><span>Facturación estimada del lote</span><span>'+money(estimatedSales(units,summary))+'</span></div>'+
+ '<div class="ops-costs-row"><span>Costos totales estimados del lote</span><span class="ops-lot-cost-total">'+money(costs)+'</span></div>'+
+ '<div class="ops-muted">Facturación − ganancia neta · <span class="ops-lot-cost-share">'+pct(costShare(sales,costs))+'</span> de lo facturado · incluye capital y costos de venta.</div>'+
  '<div class="ops-costs-row"><span>Ganancia neta estimada del lote</span><span>'+money(netTotal)+'</span></div>'+
  '<div class="ops-costs-row"><span>Ganancia estimada por unidad</span><span>'+money(netUnit)+'</span></div>'+
  '<div class="ops-costs-row"><span>Margen del lote</span><span>'+pct(f.margin)+'</span></div>'+
@@ -307,14 +311,14 @@ function closeForm(id){
 }
 
 function operationRowHtml(o){
-  var q=o.prediction||{},a=o.actual||{},v=o.variance||{},kind=o.kind||(o.status==="ANALISIS"?"ANALISIS":"COMPRA"),buy=o.purchase||null,ov=buy&&buy.override&&buy.override.manual?buy.override:null;
+  var q=o.prediction||{},a=o.actual||{},v=o.variance||{},kind=o.kind||(o.status==="ANALISIS"?"ANALISIS":"COMPRA"),buy=o.purchase||null,ov=buy&&buy.override&&buy.override.manual?buy.override:null,sales=buy?estimatedSales(buy.units,buy.summary):null,estimatedCosts=totalCosts(sales,buy&&buy.estimate&&buy.estimate.netTotal),actualSales=realSales(a),actualCosts=totalCosts(actualSales,a.profit);
   return '<div class="ops-row" data-operation-id="'+esc(o.id)+'"><b>'+esc(o.id)+'</b> · '+esc(kind)+' · '+esc(o.status)+' · '+esc((o.product||{}).asin||"SIN ASIN")+
    '<br><b>PREDICCIÓN:</b> '+esc(q.decision||"—")+' · '+(q.units==null?'u —':'u '+q.units)+' · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+
    (buy?'<br><b>COMPRA REAL:</b> '+buy.units+' u · inversión '+money(buy.investment):'')+
-   (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> facturación '+money(estimatedSales(buy.units,buy.summary))+' · ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
+   (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> facturación '+money(estimatedSales(buy.units,buy.summary))+' · costos estimados <span class="ops-estimated-costs">'+money(estimatedCosts)+'</span> (<span class="ops-estimated-cost-share">'+pct(costShare(sales,estimatedCosts))+'</span> de la facturación) · ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
    (buy?operationLotHtml(o):'')+
    (ov?'<div class="ops-override"><b>OVERRIDE MANUAL</b><br>Recomendación JEV: '+esc(ov.recommendedUnits)+' u · Compra registrada: '+esc(ov.actualUnits)+' u.</div>':'')+
-   (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> facturación '+money(realSales(a))+' · beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
+   (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> facturación '+money(realSales(a))+' · costos reales <span class="ops-actual-costs">'+money(actualCosts)+'</span> (<span class="ops-actual-cost-share">'+pct(costShare(actualSales,actualCosts))+'</span> de la facturación) · beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">Costos reales = facturación − beneficio neto registrado.</span><br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-summary-btn" data-id="'+esc(o.id)+'">Ver resumen del lote</button><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+
    '<br><span class="ops-muted">Financial '+(q.financialScore==null?"—":q.financialScore)+' · Rotation '+(q.rotationScore==null?"—":q.rotationScore)+' · Market '+(q.marketScore==null?"—":q.marketScore)+' · Risk '+(q.riskScore==null?"—":q.riskScore)+' · Confidence '+(q.dataConfidence==null?"—":q.dataConfidence)+'</span></div>'
 }

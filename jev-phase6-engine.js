@@ -82,9 +82,11 @@
     if(!fin.complete||!land.complete)return '<div id="motor-scoring-prediction" class="jev-engine-note">Predicción financiera incompleta: faltan datos de costos, precio o devoluciones.</div>';
     var pilot=final.decision==="COMPRAR PILOTO"&&final.pilotUnits>0,units=pilot?final.pilotUnits:land.units,investment=pilot?final.pilotCapital:land.perUnit*units;
     var predicted=pilot?evaluateFinancial({complete:true,missing:[],units:units,perUnit:investment/units}):fin,balance=capitalBalance(null,investment);
+    var sales=Number(val("p_precio"))*units,costs=sales-predicted.net*units;
     function metric(id,label,value,note){return '<div id="'+id+'" class="jev-engine-mini"><div class="k">'+label+'</div><div class="v">'+value+'</div><div class="jev-engine-note">'+note+'</div></div>'}
     return '<div id="motor-scoring-prediction" data-units="'+units+'" data-kind="'+(pilot?'pilot':'analysis')+'"><div class="jev-engine-note"><b>Predicción financiera · '+(pilot?'piloto recomendado':'análisis actual')+' · '+units+' unidad'+(units===1?'':'es')+'</b></div><div class="jev-engine-grid">'+
       metric('prediction-net','Ganancia neta estimada',money(predicted.net*units),money(predicted.net)+' por unidad')+
+      metric('prediction-costs','Costos totales estimados',money(costs),pct(sales>0?costs/sales:null)+' de la facturación · incluye capital y costos de venta')+
       metric('prediction-margin','Margen estimado',pct(predicted.margin),'Ganancia neta / ventas')+
       metric('prediction-roi','ROI estimado / ciclo',pct(predicted.roi),'Ganancia neta / inversión')+
       metric('prediction-capital','Capital necesario',money(investment),'Producto + Prep + fletes del lote')+

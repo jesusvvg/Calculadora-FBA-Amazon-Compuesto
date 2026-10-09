@@ -164,6 +164,9 @@ function checkTabs(w){
     const beforeConsult=storage(w);archiveFold.open=true;archived.open=true;
     assert(archived.textContent.includes('RESULTADO REAL:'));assert(archived.textContent.includes('COMPRA REAL:'));
     assert(archived.textContent.includes('RESULTADO REAL: facturación $160.00'),'real sales are visible in closed OP');
+    assert.equal(archived.querySelector('.ops-actual-costs').textContent,'$120.00','actual costs use actual sales and profit, not the saved forecast');
+    assert.equal(archived.querySelector('.ops-actual-cost-share').textContent,'75.0%');
+    assert.equal(archived.querySelector('.ops-estimated-costs').textContent,'$183.99','original estimate remains separate from actual costs');
     checkTabs(w);assert(archiveFold.open&&archived.open,'consultation stays expanded while navigating tabs');
     assert.deepEqual(storage(w),beforeConsult,'consulting a closed record never changes saved data');
     closeEditor(w,'OP-ONE');fillClose(w,{units:1});
@@ -192,6 +195,8 @@ function checkTabs(w){
     assert.equal(totals.realizedSales,160,'zero-sales loss never adds expected sales to real sales');
     assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$0,00');
     assert(w.document.querySelector('.ops-closed-record[data-id="OP-ONE"]').textContent.includes('RESULTADO REAL: facturación $0.00'));
+    assert.equal(w.document.querySelector('.ops-closed-record[data-id="OP-ONE"] .ops-actual-costs').textContent,'$19.00','zero-sales loss appears as the cost of that operation');
+    assert.equal(w.document.querySelector('.ops-closed-record[data-id="OP-ONE"] .ops-actual-cost-share').textContent,'—');
     const output=w.document.getElementById('p_out').textContent;
     assert(output.includes('0 compras abiertas'));assert(output.includes('$21,00'));
     assert(!output.includes('Infinity'));assert(!output.includes('NaN'));
@@ -245,6 +250,9 @@ function checkTabs(w){
     closeEditor(w,'OP-FOURTH');fillClose(w,{units:1,price:39.99,profit:9.99});confirmClose(w);await wait(400);
     assert.equal(w.document.getElementById('global-realized-margin').textContent,'31.0%','closing the next sale automatically updates net profit over actual sales');
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$399,90');
+    const reconciledCosts={'OP-EIGHT':'$195.49','OP-ONE':'$19.00','OP-THIRD':'$31.49','OP-FOURTH':'$30.00'};
+    for(const [id,value] of Object.entries(reconciledCosts))assert.equal(w.document.querySelector('.ops-closed-record[data-id="'+id+'"] .ops-actual-costs').textContent,value,'per-operation costs reconcile with the user ledger');
+    assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'$275,98');
     assert.deepEqual(operations(w).slice(0,3),beforeLastClose.slice(0,3),'margin updates leave other operations unchanged');
     const zeroSales=clone(currentReload);zeroSales[KEY]=JSON.stringify([currentOps[1]]);
     w.close();({w}=await mount(zeroSales));
@@ -261,6 +269,7 @@ function checkTabs(w){
     assert.equal(w.AMAZON_CAPITAL_BALANCE().realizedGains,0,'legacy gains stay separate from incorporated capital');
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'—','unknown historical sales are not silently zero');
     assert.equal(w.document.querySelector('#global-realized-costs .v').textContent,'—','unknown real sales cannot produce costs');
+    assert.equal(w.document.querySelector('.ops-closed-record[data-id="OP-EIGHT"] .ops-actual-costs').textContent,'—');
     assert.equal(w.document.getElementById('global-realized-cost-ratio').textContent,'—');
     old[0].actual.unitsSold=8;old[0].actual.price=20;w.localStorage.setItem(KEY,JSON.stringify(old));w.JEV_FINANCIAL_SYNC.sync();
     assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$160,00','legacy real sales derive from actual units and price');
@@ -295,10 +304,16 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-units'),'1');
     assert.equal(w.document.querySelector('#prediction-roi .v').textContent,(w.MOTOR_SCORING_ENGINE.financial.roi*100).toFixed(1)+'%');
     assert.equal(w.document.querySelector('#prediction-net .v').textContent,format(w.MOTOR_SCORING_ENGINE.financial.net));
+    assert.equal(w.document.querySelector('#prediction-costs .v').textContent,'$30,00','forecast costs include capital and Amazon fees');
     assert.equal(w.document.querySelector('#prediction-capital .v').textContent,'$19,00');
     assert.equal(w.document.querySelector('#prediction-available .v').textContent,'$286,43');
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().net,0,'analysis profit never enters the open summary');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43,'prediction does not reserve capital');
+    w.document.getElementById('ops-buy').disabled=false;w.document.getElementById('ops-buy').click();
+    assert.equal(w.document.querySelector('#op-lot-figures .ops-lot-cost-total').textContent,'$30.00');
+    input(w,'op-buy-units',7);
+    assert.equal(w.document.querySelector('#op-lot-figures .ops-lot-cost-total').textContent,'$161.99','chosen quantity includes variable fees and fixed lot costs once');
+    w.document.getElementById('op-buy-cancel').click();
     const firstROI=w.document.querySelector('#prediction-roi .v').textContent;
     predictionInput('p_precio',35);assert.notEqual(w.document.querySelector('#prediction-roi .v').textContent,firstROI,'price changes update prediction');
     w.JEV_FINANCIAL_SYNC.sync();assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$319,92','current analysis never overwrites actual recorded sales');
@@ -309,6 +324,7 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-units'),'5');
     assert.equal(w.document.querySelector('#prediction-roi .v').textContent,(pilotFin.roi*100).toFixed(1)+'%','ROI uses recommended quantity and its fixed-lot costs');
     assert.equal(w.document.querySelector('#prediction-net .v').textContent,format(pilotFin.net*5));
+    assert.equal(w.document.querySelector('#prediction-costs .v').textContent,'$117,99','costs follow the recommended five units, not the requested eight');
     assert.equal(w.document.querySelector('#prediction-capital .v').textContent,'$63,00');
     assert.deepEqual(operations(w),estimateBefore,'forecast never edits saved open or closed operations');
     analysisState.eligibility.status='NO VERIFICADO';w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));predictionInput('p_precio',39.99);
@@ -316,6 +332,7 @@ function checkTabs(w){
     assert.equal(w.document.querySelector('#motor-scoring-prediction').getAttribute('data-kind'),'analysis','waiting analysis is not labelled a recommended purchase');
     analysisState.returns.returnRateExpected=null;w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));predictionInput('p_precio',39.99);
     assert.equal(w.document.getElementById('prediction-roi'),null,'missing inputs never display a fabricated forecast');
+    assert.equal(w.document.getElementById('prediction-costs'),null,'incomplete inputs never fabricate zero costs');
     assert(w.document.getElementById('motor-scoring-prediction').textContent.includes('incompleta'));
     // Empty purchase summary must not show the unrelated current analysis as a saved purchase.
     const empty=initial();empty[KEY]='[]';delete empty[SELECTED];w.close();({w}=await mount(empty));
