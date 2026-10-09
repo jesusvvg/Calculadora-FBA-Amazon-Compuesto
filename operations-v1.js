@@ -125,11 +125,38 @@ function costBreakdownHtml(q,units){
  '</div>';
 }
 
+
+function lotFiguresHtml(units,investment,financial,summary){
+ var f=financial||{},netTotal=f.netTotal!=null?f.netTotal:(f.net!=null?f.net*units:null),netUnit=f.netUnit!=null?f.netUnit:f.net;
+ return '<div class="ops-costs"><b>Resumen de este lote · '+esc(units)+' unidades</b>'+
+ '<div class="ops-costs-row"><span>Ganancia neta estimada del lote</span><span>'+money(netTotal)+'</span></div>'+
+ '<div class="ops-costs-row"><span>Ganancia estimada por unidad</span><span>'+money(netUnit)+'</span></div>'+
+ '<div class="ops-costs-row"><span>Margen del lote</span><span>'+pct(f.margin)+'</span></div>'+
+ '<div class="ops-costs-row"><span>ROI del lote</span><span>'+pct(f.roi)+'</span></div>'+
+ '<div class="ops-costs-row"><span>Capital de este lote</span><span>'+money(investment)+'</span></div>'+
+ '<div class="ops-costs-row"><span>Costo de entrada por unidad</span><span>'+money(units>0?investment/units:null)+'</span></div>'+
+ '<div class="ops-costs-row"><span>Precio mínimo por unidad</span><span>'+money(f.breakEven)+'</span></div>'+
+ '</div>';
+}
+function renderEditorFigures(units,investment){
+ var host=document.getElementById("ops-editor");if(!host)return;
+ var node=document.getElementById("op-lot-figures");
+ if(!node){node=document.createElement("div");node.id="op-lot-figures";host.appendChild(node)}
+ var f=purchaseEstimate(units,investment),balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(window.AMAZON_PURCHASE_PREVIEW&&window.AMAZON_PURCHASE_PREVIEW.operationId,investment);
+ var html=lotFiguresHtml(units,investment,f)+(balance&&balance.complete?'<div class="ops-muted">Disponible si guardas este lote: '+money(balance.afterPurchase)+' · incluye otras compras y reserva.</div>':'');
+ if(node.innerHTML!==html)node.innerHTML=html;
+}
+function operationLotHtml(o){
+ var b=o.purchase;if(!b)return "";
+ return '<details class="ops-lot-details" data-id="'+esc(o.id)+'"><summary>Detalle financiero de este lote</summary>'+lotFiguresHtml(b.units,b.investment,b.estimate||b.summary&&b.summary.financial)+costBreakdownHtml(o.prediction||{},b.units)+'</details>';
+}
+
 function previewPurchase(q,units,investment){
  var b=costBreakdown(q.costModel,units);
  if(b&&units>0&&isFinite(investment)&&investment>=0){
   window.AMAZON_PURCHASE_PREVIEW={units:units,checkout:b.productUnitUSD,supplier:b.supplierToPrepLotUSD,prepUnit:b.prepUnit,other:b.otherPrepLot,prepAmazon:b.prepToAmazonLot,fixedLot:b.fixedLotTotal,total:investment,landed:investment/units};
  }else window.AMAZON_PURCHASE_PREVIEW=null;
+ renderEditorFigures(units,investment);
  if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync();
 }
 function purchaseEstimate(units,investment){var e=window.MOTOR_SCORING_ENGINE,f=e&&e.evaluatePurchaseFinancial&&e.evaluatePurchaseFinancial(units,investment);return f&&f.complete?{netUnit:f.net,netTotal:f.net*units,margin:f.margin,roi:f.roi,breakEven:f.breakEven}:null}
@@ -204,12 +231,12 @@ function editPurchaseForm(id){
   if(recalculate!==false&&inv&&units!=null&&units>=1){var projected=projectedInvestment(q,units);if(projected!=null&&isFinite(projected))inv.value=Number(projected).toFixed(2)}
   if(bd)bd.innerHTML=costBreakdownHtml(q,units);
   previewPurchase(q,units,inv&&inv.value!==""?Number(inv.value):NaN);
-  if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}
+  if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;renderEditorFigures(units,Number(inv.value));if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}
   if(!w)return;
   var z=overrideFor(q,units);
   w.innerHTML=z.isOverride?'<div class="ops-override"><b>Override:</b> JEV recomendó máximo '+esc(z.recommended)+' unidad'+(z.recommended===1?'':'es')+' y estás editando la compra a '+esc(Math.round(units))+'.</div>':''
  }
- var investmentInput=document.getElementById("op-edit-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN);if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}});
+ var investmentInput=document.getElementById("op-edit-investment");if(investmentInput)investmentInput.addEventListener("input",function(){previewPurchase(q,num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN);if(window.AMAZON_PURCHASE_PREVIEW){window.AMAZON_PURCHASE_PREVIEW.operationId=id;renderEditorFigures(num(document.getElementById("op-edit-units").value),this.value!==""?Number(this.value):NaN);if(window.JEV_FINANCIAL_SYNC)window.JEV_FINANCIAL_SYNC.sync()}});
  var ui=document.getElementById("op-edit-units");if(ui)ui.addEventListener("input",refreshEdit);refreshEdit(false);
  document.getElementById("op-edit-cancel").onclick=function(){host.innerHTML="";cancelPreview()};
  document.getElementById("op-edit-confirm").onclick=function(){
@@ -267,6 +294,7 @@ function render(resetEditor,keepPreview){
    '<br><b>PREDICCIÓN:</b> '+esc(q.decision||"—")+' · '+(q.units==null?'u —':'u '+q.units)+' · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+
    (buy?'<br><b>COMPRA REAL:</b> '+buy.units+' u · inversión '+money(buy.investment):'')+
    (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
+   (buy?operationLotHtml(o):'')+
    (ov?'<div class="ops-override"><b>OVERRIDE MANUAL</b><br>Recomendación JEV: '+esc(ov.recommendedUnits)+' u · Compra registrada: '+esc(ov.actualUnits)+' u.</div>':'')+
    (o.status==="CERRADA"?'<b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN: precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-summary-btn" data-id="'+esc(o.id)+'">Ver resumen del lote</button><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+
@@ -276,7 +304,7 @@ function render(resetEditor,keepPreview){
  Array.prototype.forEach.call(document.querySelectorAll(".ops-close-btn"),function(x){x.onclick=function(){closeForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-edit-btn"),function(x){x.onclick=function(){editPurchaseForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-delete-btn"),function(x){x.onclick=function(){deleteOperation(this.getAttribute("data-id"))}});
- Array.prototype.forEach.call(document.querySelectorAll(".ops-summary-btn"),function(x){x.onclick=function(){var host=document.getElementById("ops-editor");if(host)host.innerHTML="";var o=load().filter(function(o){return o.id===x.getAttribute("data-id")})[0];selectPurchase(o)}});
+ Array.prototype.forEach.call(document.querySelectorAll(".ops-summary-btn"),function(x){x.onclick=function(){var row=x.closest(".ops-row"),detail=row&&row.querySelector(".ops-lot-details");if(detail){detail.open=!detail.open;if(detail.open&&detail.scrollIntoView)detail.scrollIntoView({block:"nearest"})}}});
  var a=document.getElementById("ops-analysis");if(a)a.onclick=function(){var o=snapshot("ANALISIS");if(!o){alert("El Motor Scoring todavía no está listo.");return}var list=load();list.push(o);save(list);render(true)};
  var b=document.getElementById("ops-buy");if(b)b.onclick=function(){var o=snapshot("COMPRA");if(!o||o.prediction.decision!=="COMPRAR PILOTO"){alert("JEV no recomienda compra con la decisión actual.");return}purchaseForm(o)};
 }
