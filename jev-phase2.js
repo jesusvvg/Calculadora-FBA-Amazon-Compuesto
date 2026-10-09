@@ -109,7 +109,9 @@
   function exitSummary(){var e=state.verification.exitPlan;if(e.returnAllowed==="SÍ"){var s=e.returnWindowDays!==null?e.returnWindowDays+" días":"devolución permitida";s+=Number(e.restockingFeePct)>0?" · restocking "+Number(e.restockingFeePct).toFixed(1)+"%":" · sin restocking registrado";return s}if(e.returnAllowed==="NO")return "SIN DEVOLUCIÓN"+(e.finalSale==="SÍ"?" · FINAL SALE":"");return "NO VERIFICADO"}
 
   function syncFinancialDisplay(r){
-    var out=$("p_out");if(!out)return;var verdict=out.querySelector(".verdict"),blocked=r.decision==="ESPERAR"||r.decision==="DESCARTAR";if(verdict)verdict.style.display=blocked?"none":"";
+    var out=$("p_out");if(!out)return;
+    if($("p-purchases")){var legacy=out.querySelector(".verdict"),reference=$("jev_financial_reference");if(legacy)legacy.style.display="none";if(reference)reference.remove();return}
+    var verdict=out.querySelector(".verdict"),blocked=r.decision==="ESPERAR"||r.decision==="DESCARTAR";if(verdict)verdict.style.display=blocked?"none":"";
     var note=$("jev_financial_reference");if(blocked&&!note){note=document.createElement("div");note.id="jev_financial_reference";note.className="jev-financial-reference";note.textContent="Métricas financieras visibles solo como referencia. El PRE-CHECK debe superarse antes de interpretar un veredicto económico.";out.insertBefore(note,out.firstChild)}else if(!blocked&&note)note.remove();
   }
   function render(){

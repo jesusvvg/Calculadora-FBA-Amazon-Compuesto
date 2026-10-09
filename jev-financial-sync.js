@@ -42,7 +42,7 @@ function globalTotals(){
  return t;
 }
 function syncGlobal(out){
- var t=globalTotals();if(!t.count&&!t.closedCount&&!t.invalid){var previous=$("closed-operations-summary");if(previous)previous.remove();return false;}
+ var t=globalTotals();if(!$("p-purchases")&&!t.count&&!t.closedCount&&!t.invalid){var previous=$("closed-operations-summary");if(previous)previous.remove();return false;}
  var balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(),context=$("purchase-summary-context");
  if(!context){context=document.createElement("div");context.id="purchase-summary-context";context.className="note";out.insertBefore(context,out.firstChild)}
  setText(context,"Resumen general · "+t.count+" compras abiertas · "+(t.closedCount||0)+" cerradas. Las estimaciones corresponden solo a compras abiertas.");

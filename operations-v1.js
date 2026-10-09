@@ -317,10 +317,11 @@ function operationRowHtml(o){
 }
 
 function renderClosed(ops){
- var out=document.getElementById("p_out"),section=document.getElementById("p-prod")||(out&&out.parentNode);if(!section)return;
+ var out=document.getElementById("p_out"),section=document.getElementById("p-closed")||document.getElementById("p-prod")||(out&&out.parentNode);if(!section)return;
  var archive=document.getElementById("closed_operations_history");
  if(!archive){archive=document.createElement("div");archive.id="closed_operations_history";archive.className="ops-box";section.appendChild(archive)}
  var closed=ops.filter(function(o){return o.status==="CERRADA"}).slice().reverse();
+ var empty=document.getElementById("closed-operations-empty");if(empty)empty.hidden=!!closed.length;
  archive.hidden=!closed.length;
  var html=closed.length?'<details class="ops-archive-fold"><summary class="cardtitle">Operaciones cerradas · consulta</summary>'+closed.map(function(o){return '<details class="ops-closed-record" data-id="'+esc(o.id)+'"><summary>'+esc(o.id)+'</summary>'+operationRowHtml(o)+'</details>'}).join("")+'</details>':"";
  if(archive._motorScoringHtml!==html){archive.innerHTML=html;archive._motorScoringHtml=html;}

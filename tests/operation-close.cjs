@@ -44,6 +44,19 @@ function fillClose(w,values={}) {
   for(const [k,v] of Object.entries(fields)) input(w,'op-'+k,v);
 }
 function confirmClose(w) { w.document.getElementById('op-settled').checked=true;w.document.getElementById('op-confirm').click(); }
+function checkTabs(w){
+  const keys=['ciclo','prod','purchases','closed'],before=storage(w),editor=w.document.getElementById('ops-editor');
+  for(const key of keys){
+    w.document.getElementById('t-'+key).click();
+    for(const other of keys){const selected=other===key;
+      assert.equal(w.document.getElementById('t-'+other).getAttribute('aria-selected'),String(selected));
+      assert.equal(w.document.getElementById('p-'+other).hidden,!selected);
+      assert.equal(w.document.getElementById('t-'+other).tabIndex,selected?0:-1);
+    }
+    assert.equal(w.document.getElementById('ops-editor'),editor,'navigation preserves the mounted form');
+  }
+  assert.deepEqual(storage(w),before,'navigation never edits financial inputs or saved operations');
+}
 
 (async()=>{
   const server=http.createServer((req,res)=>{
@@ -68,6 +81,15 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
   try {
     let {w,alerts}=await mount();
     const baseline=operations(w),baseStorage=storage(w);
+    assert.equal(w.document.querySelectorAll('.tabs [role="tab"]').length,4);
+    assert.equal(w.document.getElementById('p_out').parentNode.id,'p-purchases');
+    assert.equal(w.document.getElementById('jev_final_decision').closest('[role="tabpanel"]').id,'p-prod');
+    checkTabs(w);
+    const lastTab=w.document.getElementById('t-closed');
+    lastTab.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Home',bubbles:true}));
+    assert.equal(w.document.activeElement.id,'t-ciclo');
+    w.document.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+    assert.equal(w.document.activeElement.id,'t-closed');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,85);
     assert.equal(w.document.getElementById('global-total-capital'),null,'real results appear after closure');
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().units,9);
@@ -97,6 +119,7 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     const editor=input(w,'op-edit-units',9);w.AMAZON_COMPOUND_OPERATIONS.render();
     assert.equal(w.document.getElementById('op-edit-units'),editor);
     assert.equal(editor.closest('.ops-row').getAttribute('data-operation-id'),'OP-EIGHT','edit form belongs to its operation');
+    checkTabs(w);assert.equal(w.document.getElementById('op-edit-units'),editor);assert.equal(editor.value,'9');
     w.document.getElementById('op-edit-cancel').click();assert.deepEqual(operations(w),baseline);
     closeEditor(w,'OP-EIGHT');fillClose(w);confirmClose(w);await wait(400);
     const closed=operations(w)[0];
@@ -126,10 +149,13 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     assert.equal(archived.parentNode,archiveFold,'OP identifiers are nested under the archive heading');
     assert(archived&&!archived.open,'closed operation is archived collapsed');
     assert.equal(archived.querySelector('summary').textContent,'OP-EIGHT','collapsed row displays only the OP identifier');
-    assert.equal(w.document.getElementById('p-prod').lastElementChild.id,'closed_operations_history','archive is after the output and last capital cards');
+    assert.equal(w.document.getElementById('closed_operations_history').parentNode.id,'p-closed','archive lives only in its consultation tab');
+    assert.equal(w.document.querySelector('#p-prod #closed_operations_history'),null);
+    assert.equal(w.document.querySelector('#p-purchases #closed_operations_history'),null);
     assert(w.document.getElementById('closed-operations-summary').compareDocumentPosition(archived)&w.Node.DOCUMENT_POSITION_FOLLOWING);
     const beforeConsult=storage(w);archiveFold.open=true;archived.open=true;
     assert(archived.textContent.includes('RESULTADO REAL:'));assert(archived.textContent.includes('COMPRA REAL:'));
+    checkTabs(w);assert(archiveFold.open&&archived.open,'consultation stays expanded while navigating tabs');
     assert.deepEqual(storage(w),beforeConsult,'consulting a closed record never changes saved data');
     closeEditor(w,'OP-ONE');fillClose(w,{units:1});
     assert(!w.document.getElementById('closed_operations_history').contains(w.document.getElementById('ops-editor')),'open lot editor never appears under closed archive');
@@ -233,6 +259,14 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     analysisState.returns.returnRateExpected=null;w.localStorage.setItem('jev_v1',JSON.stringify(analysisState));predictionInput('p_precio',39.99);
     assert.equal(w.document.getElementById('prediction-roi'),null,'missing inputs never display a fabricated forecast');
     assert(w.document.getElementById('motor-scoring-prediction').textContent.includes('incompleta'));
+    // Empty purchase summary must not show the unrelated current analysis as a saved purchase.
+    const empty=initial();empty[KEY]='[]';delete empty[SELECTED];w.close();({w}=await mount(empty));
+    assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().count,0);
+    assert(w.document.getElementById('p_out').textContent.includes('0 compras abiertas'));
+    assert.equal(w.document.querySelector('#p_out .stats .stat .v').textContent,'$0,00');
+    assert.equal(w.document.getElementById('closed-operations-summary'),null);
+    assert(!w.document.getElementById('closed-operations-empty').hidden);
+    checkTabs(w);
     // Detect concurrent edits and storage failures without losing either lot.
     w.close();({w,alerts}=await mount());closeEditor(w,'OP-EIGHT');fillClose(w);
     const changed=operations(w);changed[0].purchase.units=7;w.localStorage.setItem(KEY,JSON.stringify(changed));

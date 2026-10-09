@@ -141,12 +141,13 @@
     wrapper.className = "jev-right";
     wrapper.id = "jev_right";
     parent.insertBefore(wrapper, out);
-    wrapper.appendChild(out);
+    var purchases=$("p-purchases");
+    if(purchases)purchases.appendChild(out);else wrapper.appendChild(out);
 
     var gate = document.createElement("div");
     gate.id = "jev_gate";
     gate.className = "jev-gate";
-    wrapper.insertBefore(gate, out);
+    wrapper.insertBefore(gate, wrapper.firstChild);
   }
 
   function hydrateFields(){
@@ -241,6 +242,7 @@
     if(!out) return;
     var verdict = out.querySelector(".verdict");
     if(!verdict) return;
+    if($("p-purchases")){verdict.style.display="none";return}
     var label = verdict.querySelector(".l");
     var value = verdict.querySelector(".v");
     var status = state.eligibility.status || "NO VERIFICADO";
@@ -278,7 +280,7 @@
     if(document.getElementById("jev-financial-sync-loader")) return;
     var s=document.createElement("script");
     s.id="jev-financial-sync-loader";
-    s.src="jev-financial-sync.js?v=50";
+    s.src="jev-financial-sync.js?v=53";
     s.async=true;
     document.body.appendChild(s);
   }
