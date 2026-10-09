@@ -35,7 +35,10 @@ function initial() {
 function storage(w) { return Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)])); }
 function operations(w) { return JSON.parse(w.localStorage.getItem(KEY)); }
 function input(w,id,value) { const e=w.document.getElementById(id);e.value=value;e.dispatchEvent(new w.Event('input',{bubbles:true}));return e; }
-function closeEditor(w,id) { w.document.querySelector(`.ops-close-btn[data-id="${id}"]`).click(); }
+function closeEditor(w,id) {
+  w.document.querySelector(`.ops-close-btn[data-id="${id}"]`).click();
+  assert.equal(w.document.getElementById('ops-editor').parentNode.getAttribute('data-operation-id'),id,'close form belongs directly to the chosen operation');
+}
 function fillClose(w,values={}) {
   const fields={units:8,price:20,returns:0,dtc:61,profit:40,...values};
   for(const [k,v] of Object.entries(fields)) input(w,'op-'+k,v);
@@ -93,6 +96,7 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     w.document.querySelector('.ops-edit-btn[data-id="OP-EIGHT"]').click();
     const editor=input(w,'op-edit-units',9);w.AMAZON_COMPOUND_OPERATIONS.render();
     assert.equal(w.document.getElementById('op-edit-units'),editor);
+    assert.equal(editor.closest('.ops-row').getAttribute('data-operation-id'),'OP-EIGHT','edit form belongs to its operation');
     w.document.getElementById('op-edit-cancel').click();assert.deepEqual(operations(w),baseline);
     closeEditor(w,'OP-EIGHT');fillClose(w);confirmClose(w);await wait(400);
     const closed=operations(w)[0];
@@ -112,9 +116,22 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     assert.equal(totals.net,baseline[1].purchase.estimate.netTotal,'closed estimate leaves open totals');
     assert(w.document.getElementById('closed-operations-summary').textContent.includes('$40,00'));
     assert.equal(w.document.querySelector('.ops-close-btn[data-id="OP-EIGHT"]'),null);
+    assert.equal(w.document.querySelector('#ops-list [data-operation-id="OP-EIGHT"]'),null,'closed operation leaves the active list');
+    let archived=w.document.querySelector('.ops-closed-record[data-id="OP-EIGHT"]');
+    assert(archived&&!archived.open,'closed operation is archived collapsed');
+    assert.equal(archived.querySelector('summary').textContent,'OP-EIGHT','collapsed row displays only the OP identifier');
+    assert.equal(w.document.getElementById('p-prod').lastElementChild.id,'closed_operations_history','archive is after the output and last capital cards');
+    assert(w.document.getElementById('closed-operations-summary').compareDocumentPosition(archived)&w.Node.DOCUMENT_POSITION_FOLLOWING);
+    const beforeConsult=storage(w);archived.open=true;
+    assert(archived.textContent.includes('RESULTADO REAL:'));assert(archived.textContent.includes('COMPRA REAL:'));
+    assert.deepEqual(storage(w),beforeConsult,'consulting a closed record never changes saved data');
+    closeEditor(w,'OP-ONE');fillClose(w,{units:1});
+    assert(!w.document.getElementById('closed_operations_history').contains(w.document.getElementById('ops-editor')),'open lot editor never appears under closed archive');
+    w.document.getElementById('op-cancel').click();
     const after=storage(w);w.close();({w,alerts}=await mount(after));
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,221,'reload never counts profit twice');
     assert.equal(w.document.querySelector('#global-total-capital .v').textContent,'$340,00');
+    assert(!w.document.querySelector('.ops-closed-record[data-id="OP-EIGHT"]').open,'archive starts collapsed after reload');
     for(let i=0;i<4;i++)w.JEV_FINANCIAL_SYNC.sync();
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,221);
     // Complete loss: zero sales are valid, margin is undefined rather than Infinity.
@@ -129,6 +146,8 @@ function confirmClose(w) { w.document.getElementById('op-settled').checked=true;
     assert(!output.includes('Infinity'));assert(!output.includes('NaN'));
     const bothClosed=storage(w);w.close();({w}=await mount(bothClosed));
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,221);
+    assert.equal(w.document.querySelectorAll('#ops-list .ops-row').length,0);
+    assert.equal(w.document.querySelectorAll('#closed_operations_history .ops-closed-record').length,2);
     let mutations=0;const observer=new w.MutationObserver(ms=>mutations+=ms.length);
     observer.observe(w.document.getElementById('p_out'),{childList:true,subtree:true});
     for(let i=0;i<4;i++)w.JEV_FINANCIAL_SYNC.sync();await wait(500);

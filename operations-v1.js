@@ -99,6 +99,15 @@ function styles(){
  var x=document.createElement("style");x.id="ops-style";
  x.textContent=".ops-box{margin:14px 0;padding:14px;border:1px solid var(--line);background:#fff}.ops-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.ops-actions{display:flex;gap:8px;flex-wrap:wrap}.ops-btn{padding:9px 12px;border:1px solid var(--deep);background:#fff;cursor:pointer;font-weight:700}.ops-btn:disabled{opacity:.45;cursor:not-allowed}.ops-row{border-top:1px solid var(--line);padding:10px 0;font-size:12px;line-height:1.5}.ops-row .ops-actions{margin-top:9px}.ops-muted{color:var(--muted);font-size:11px}.ops-empty{color:var(--muted);padding-top:8px}.ops-close{margin-top:10px;padding:12px;border:1px solid var(--line);background:#fafafa}.ops-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.ops-grid label{font-size:11px;color:var(--muted)}.ops-grid input{width:100%;box-sizing:border-box;padding:8px;margin-top:4px;border:1px solid var(--line);background:#fff;color:var(--ink)}.ops-override{display:block;clear:both;margin:8px 0 10px;padding:8px 10px;border-left:3px solid var(--warn);background:var(--warnBg);font-size:11px;line-height:1.45}.ops-costs{margin:10px 0;padding:10px;border:1px solid var(--line);background:#fff;font-size:11px;line-height:1.55}.ops-costs-row{display:flex;justify-content:space-between;gap:12px}.ops-costs-total{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-weight:700}.ops-danger{border-color:var(--bad);color:var(--bad)}@media(max-width:620px){.ops-head{align-items:flex-start;flex-direction:column}.ops-grid{grid-template-columns:1fr}}";
  document.head.appendChild(x)
+ var archiveStyle=document.createElement("style");archiveStyle.textContent=".ops-closed-record{border-top:1px solid var(--line)}.ops-closed-record>summary{cursor:pointer;font-size:12px;font-weight:700;padding:10px 0}.ops-closed-record .ops-row{border-top:0}.ops-box[hidden]{display:none}";document.head.appendChild(archiveStyle);
+}
+
+function editorHost(id){
+ var root=document.getElementById("operations_history"),host=document.getElementById("ops-editor");if(!root||!host)return null;
+ var row=null;if(id)Array.prototype.some.call(root.querySelectorAll(".ops-row"),function(node){if(node.getAttribute("data-operation-id")===id){row=node;return true}return false});
+ if(id&&!row)return null;
+ if(row){if(host.parentNode!==row)row.appendChild(host)}else root.insertBefore(host,document.getElementById("ops-list"));
+ return host;
 }
 
 function overrideFor(q,units){var rec=q&&q.units!=null?Number(q.units):null;return {recommended:rec,isOverride:rec!=null&&units>rec}}
@@ -197,7 +206,7 @@ function checkPurchaseCapital(investment,excludeId){
 }
 
 function purchaseForm(o){
- var q=o.prediction||{},host=document.getElementById("ops-editor");if(!host)return;
+ var q=o.prediction||{},host=editorHost();if(!host)return;
  var initial=projectedInvestment(q,q.units);
  host.innerHTML='<div class="ops-close"><b>Registrar compra '+esc(o.id)+'</b><div class="ops-muted">La recomendación JEV queda congelada como predicción. La inversión se recalcula separando costos por unidad y costos por lote.</div><div class="ops-grid"><label>Unidades compradas<input id="op-buy-units" type="number" min="1" step="1" value="'+esc(q.units==null?"":q.units)+'"></label><label>Inversión real US$<input id="op-buy-investment" type="number" min="0" step="0.01" value="'+esc(initial==null?"":Number(initial).toFixed(2))+'"></label></div><div id="op-buy-breakdown"></div><div id="op-buy-warning"></div><button id="op-buy-confirm" class="ops-btn">Confirmar compra</button> <button id="op-buy-cancel" class="ops-btn">Cancelar</button></div>';
  function refreshPurchase(){
@@ -224,7 +233,7 @@ function purchaseForm(o){
 
 function editPurchaseForm(id){
  var ops=load(),o=ops.filter(function(x){return x.id===id})[0];if(!o||o.status!=="ABIERTA"||!o.purchase)return;
- var q=o.prediction||{},buy=o.purchase,host=document.getElementById("ops-editor");if(!host)return;
+ var q=o.prediction||{},buy=o.purchase,host=editorHost(id);if(!host)return;
  host.innerHTML='<div class="ops-close"><b>Editar compra '+esc(id)+'</b><div class="ops-muted">La predicción de JEV no cambia. Solo corriges la compra real registrada.</div><div class="ops-grid"><label>Unidades compradas<input id="op-edit-units" type="number" min="1" step="1" value="'+esc(buy.units)+'"></label><label>Inversión real US$<input id="op-edit-investment" type="number" min="0" step="0.01" value="'+esc(Number(buy.investment).toFixed(2))+'"></label></div><div id="op-edit-breakdown"></div><div id="op-edit-warning"></div><button id="op-edit-confirm" class="ops-btn">Guardar cambios</button> <button id="op-edit-cancel" class="ops-btn">Cancelar</button></div>';
  function refreshEdit(recalculate){
   var units=num(document.getElementById("op-edit-units").value),w=document.getElementById("op-edit-warning"),inv=document.getElementById("op-edit-investment"),bd=document.getElementById("op-edit-breakdown");
@@ -268,7 +277,7 @@ function closeForm(id){
  '<label>Unidades devueltas<input id="op-returns" type="number" min="0" step="1" max="'+esc(buy.units)+'" value="'+esc(a.returns==null?"":a.returns)+'"></label>'+
  '<label>Días hasta recuperar el dinero<input id="op-dtc" type="number" min="0" step="1" value="'+esc(a.daysToCash==null?"":a.daysToCash)+'"></label>'+
  '<label>Ganancia/pérdida neta total real · US$<input id="op-profit" type="number" step="0.01" value="'+esc(a.profit==null?"":a.profit)+'"></label></div><div id="op-close-figures" class="ops-costs" aria-live="polite"></div><label class="ops-muted"><input id="op-settled" type="checkbox"> El lote está liquidado: recibí los fondos y contabilicé cualquier pérdida o inventario residual.</label><div class="ops-muted">El cierre libera la inversión y suma la ganancia real (o resta la pérdida) al capital. No sumes ese resultado nuevamente al presupuesto.</div><button id="op-confirm" class="ops-btn">Cerrar operación</button> <button id="op-cancel" class="ops-btn">Cancelar</button></div>';
- var host=document.getElementById("ops-editor");host.innerHTML=html;
+ var host=editorHost(id);if(!host)return;host.innerHTML=html;
  function results(){
   var units=domNumber("op-units"),price=domNumber("op-price"),profit=domNumber("op-profit"),investment=num(buy.investment),sales=units!=null&&price!=null?units*price:null;
   return {sales:sales,roi:profit!=null&&investment>0?profit/investment:null,margin:profit!=null&&sales>0?profit/sales:null};
@@ -294,16 +303,9 @@ function closeForm(id){
  }
 }
 
-function render(resetEditor,keepPreview){
- if(resetEditor&&!keepPreview)forgetSelected();
- var root=document.getElementById("operations_history");if(!root)return;
- var editor=document.getElementById("ops-editor");
- if(!resetEditor&&editor&&editor.childElementCount){return}
- var ops=load(),engine=window.MOTOR_SCORING_ENGINE,canBuy=!!(engine&&engine.final&&engine.final.decision==="COMPRAR PILOTO");
- root.innerHTML='<div class="ops-head"><div><div class="cardtitle">Registro de análisis y operaciones · v1</div><div class="ops-muted">ANÁLISIS guarda lo que JEV pensó. COMPRA abre seguimiento real y permite comparar predicción vs resultado.</div></div><div class="ops-actions"><button id="ops-analysis" class="ops-btn">Guardar análisis</button><button id="ops-buy" class="ops-btn" '+(canBuy?'':'disabled')+'>Registrar compra</button></div></div><div id="ops-list">'+
- (ops.length?ops.slice().reverse().map(function(o){
+function operationRowHtml(o){
   var q=o.prediction||{},a=o.actual||{},v=o.variance||{},kind=o.kind||(o.status==="ANALISIS"?"ANALISIS":"COMPRA"),buy=o.purchase||null,ov=buy&&buy.override&&buy.override.manual?buy.override:null;
-  return '<div class="ops-row"><b>'+esc(o.id)+'</b> · '+esc(kind)+' · '+esc(o.status)+' · '+esc(o.product.asin||"SIN ASIN")+
+  return '<div class="ops-row" data-operation-id="'+esc(o.id)+'"><b>'+esc(o.id)+'</b> · '+esc(kind)+' · '+esc(o.status)+' · '+esc((o.product||{}).asin||"SIN ASIN")+
    '<br><b>PREDICCIÓN:</b> '+esc(q.decision||"—")+' · '+(q.units==null?'u —':'u '+q.units)+' · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+
    (buy?'<br><b>COMPRA REAL:</b> '+buy.units+' u · inversión '+money(buy.investment):'')+
    (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
@@ -312,8 +314,27 @@ function render(resetEditor,keepPreview){
    (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-summary-btn" data-id="'+esc(o.id)+'">Ver resumen del lote</button><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+
    '<br><span class="ops-muted">Financial '+(q.financialScore==null?"—":q.financialScore)+' · Rotation '+(q.rotationScore==null?"—":q.rotationScore)+' · Market '+(q.marketScore==null?"—":q.marketScore)+' · Risk '+(q.riskScore==null?"—":q.riskScore)+' · Confidence '+(q.dataConfidence==null?"—":q.dataConfidence)+'</span></div>'
- }).join(""):'<div class="ops-empty">Todavía no hay análisis ni operaciones registradas.</div>')+
- '</div><div id="ops-editor"></div>';
+}
+
+function renderClosed(ops){
+ var out=document.getElementById("p_out"),section=document.getElementById("p-prod")||(out&&out.parentNode);if(!section)return;
+ var archive=document.getElementById("closed_operations_history");
+ if(!archive){archive=document.createElement("div");archive.id="closed_operations_history";archive.className="ops-box";section.appendChild(archive)}
+ var closed=ops.filter(function(o){return o.status==="CERRADA"}).slice().reverse();
+ archive.hidden=!closed.length;
+ var html=closed.length?'<div class="cardtitle">Operaciones cerradas · consulta</div>'+closed.map(function(o){return '<details class="ops-closed-record" data-id="'+esc(o.id)+'"><summary>'+esc(o.id)+'</summary>'+operationRowHtml(o)+'</details>'}).join(""):"";
+ if(archive._motorScoringHtml!==html){archive.innerHTML=html;archive._motorScoringHtml=html;}
+}
+
+function render(resetEditor,keepPreview){
+ if(resetEditor&&!keepPreview)forgetSelected();
+ var root=document.getElementById("operations_history");if(!root)return;
+ var editor=document.getElementById("ops-editor");
+ if(!resetEditor&&editor&&editor.childElementCount){return}
+ var ops=load(),active=ops.filter(function(o){return o.status!=="CERRADA"}),engine=window.MOTOR_SCORING_ENGINE,canBuy=!!(engine&&engine.final&&engine.final.decision==="COMPRAR PILOTO");
+ root.innerHTML='<div class="ops-head"><div><div class="cardtitle">Registro de análisis y operaciones · v1</div><div class="ops-muted">ANÁLISIS guarda lo que JEV pensó. COMPRA abre seguimiento real y permite comparar predicción vs resultado.</div></div><div class="ops-actions"><button id="ops-analysis" class="ops-btn">Guardar análisis</button><button id="ops-buy" class="ops-btn" '+(canBuy?'':'disabled')+'>Registrar compra</button></div></div><div id="ops-editor"></div><div id="ops-list">'+
+ (active.length?active.slice().reverse().map(operationRowHtml).join(""):'<div class="ops-empty">No hay análisis ni compras abiertas en este registro.</div>')+'</div>';
+ renderClosed(ops);
  Array.prototype.forEach.call(document.querySelectorAll(".ops-close-btn"),function(x){x.onclick=function(){closeForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-edit-btn"),function(x){x.onclick=function(){editPurchaseForm(this.getAttribute("data-id"))}});
  Array.prototype.forEach.call(document.querySelectorAll(".ops-delete-btn"),function(x){x.onclick=function(){deleteOperation(this.getAttribute("data-id"))}});
