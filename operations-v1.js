@@ -9,6 +9,8 @@ function money(x){return x==null||!isFinite(x)?"—":"$"+Number(x).toFixed(2)}
 function num(x){if(x==null||String(x).trim()==="")return null;var n=Number(x);return isFinite(n)?n:null}
 function delta(actual,pred){return actual==null||pred==null?null:actual-pred}
 function pct(x){return x==null||!isFinite(x)?"—":(Number(x)*100).toFixed(1)+"%"}
+function estimatedSales(units,summary){var u=num(units),price=num(summary&&summary.inputs&&summary.inputs.p_precio);return u!=null&&u>=0&&price!=null&&price>=0?u*price:null}
+function realSales(actual){var a=actual||{},sales=num(a.sales),units=num(a.unitsSold),price=num(a.price);if(sales!=null)return sales>=0?sales:null;return units!=null&&units>=0&&price!=null&&price>=0?units*price:null}
 
 function readJevState(){try{var s=JSON.parse(localStorage.getItem("jev_v1")||"{}");return s&&typeof s==="object"?s:{}}catch(e){return {}}}
 function domNumber(id){var el=document.getElementById(id);if(!el||el.value==="")return null;var n=Number(el.value);return isFinite(n)?n:null}
@@ -138,6 +140,7 @@ function costBreakdownHtml(q,units){
 function lotFiguresHtml(units,investment,financial,summary){
  var f=financial||{},netTotal=f.netTotal!=null?f.netTotal:(f.net!=null?f.net*units:null),netUnit=f.netUnit!=null?f.netUnit:f.net;
  return '<div class="ops-costs"><b>Resumen de este lote · '+esc(units)+' unidades</b>'+
+ '<div class="ops-costs-row"><span>Facturación estimada del lote</span><span>'+money(estimatedSales(units,summary))+'</span></div>'+
  '<div class="ops-costs-row"><span>Ganancia neta estimada del lote</span><span>'+money(netTotal)+'</span></div>'+
  '<div class="ops-costs-row"><span>Ganancia estimada por unidad</span><span>'+money(netUnit)+'</span></div>'+
  '<div class="ops-costs-row"><span>Margen del lote</span><span>'+pct(f.margin)+'</span></div>'+
@@ -152,12 +155,12 @@ function renderEditorFigures(units,investment){
  var node=document.getElementById("op-lot-figures");
  if(!node){node=document.createElement("div");node.id="op-lot-figures";host.appendChild(node)}
  var f=purchaseEstimate(units,investment),balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(window.AMAZON_PURCHASE_PREVIEW&&window.AMAZON_PURCHASE_PREVIEW.operationId,investment);
- var html=lotFiguresHtml(units,investment,f)+(balance&&balance.complete?'<div class="ops-muted">Disponible si guardas este lote: '+money(balance.afterPurchase)+' · incluye otras compras y reserva.</div>':'');
+ var html=lotFiguresHtml(units,investment,f,{inputs:{p_precio:domNumber("p_precio")}})+(balance&&balance.complete?'<div class="ops-muted">Disponible si guardas este lote: '+money(balance.afterPurchase)+' · incluye otras compras y reserva.</div>':'');
  if(node.innerHTML!==html)node.innerHTML=html;
 }
 function operationLotHtml(o){
  var b=o.purchase;if(!b)return "";
- return '<details class="ops-lot-details" data-id="'+esc(o.id)+'"><summary>Detalle financiero de este lote</summary>'+lotFiguresHtml(b.units,b.investment,b.estimate||b.summary&&b.summary.financial)+costBreakdownHtml(o.prediction||{},b.units)+'</details>';
+ return '<details class="ops-lot-details" data-id="'+esc(o.id)+'"><summary>Detalle financiero de este lote</summary>'+lotFiguresHtml(b.units,b.investment,b.estimate||b.summary&&b.summary.financial,b.summary)+costBreakdownHtml(o.prediction||{},b.units)+'</details>';
 }
 
 function previewPurchase(q,units,investment){
@@ -308,10 +311,10 @@ function operationRowHtml(o){
   return '<div class="ops-row" data-operation-id="'+esc(o.id)+'"><b>'+esc(o.id)+'</b> · '+esc(kind)+' · '+esc(o.status)+' · '+esc((o.product||{}).asin||"SIN ASIN")+
    '<br><b>PREDICCIÓN:</b> '+esc(q.decision||"—")+' · '+(q.units==null?'u —':'u '+q.units)+' · inversión '+money(q.investment)+' · ROI '+pct(q.roi)+' · margen '+pct(q.margin)+' · DTC '+(q.daysToCash==null?"—":Math.round(q.daysToCash)+" días")+
    (buy?'<br><b>COMPRA REAL:</b> '+buy.units+' u · inversión '+money(buy.investment):'')+
-   (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
+   (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> facturación '+money(estimatedSales(buy.units,buy.summary))+' · ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
    (buy?operationLotHtml(o):'')+
    (ov?'<div class="ops-override"><b>OVERRIDE MANUAL</b><br>Recomendación JEV: '+esc(ov.recommendedUnits)+' u · Compra registrada: '+esc(ov.actualUnits)+' u.</div>':'')+
-   (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
+   (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> facturación '+money(realSales(a))+' · beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-summary-btn" data-id="'+esc(o.id)+'">Ver resumen del lote</button><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+
    '<br><span class="ops-muted">Financial '+(q.financialScore==null?"—":q.financialScore)+' · Rotation '+(q.rotationScore==null?"—":q.rotationScore)+' · Market '+(q.marketScore==null?"—":q.marketScore)+' · Risk '+(q.riskScore==null?"—":q.riskScore)+' · Confidence '+(q.dataConfidence==null?"—":q.dataConfidence)+'</span></div>'
 }

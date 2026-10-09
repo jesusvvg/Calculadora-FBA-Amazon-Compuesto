@@ -93,6 +93,9 @@ function checkTabs(w){
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,85);
     assert.equal(w.document.getElementById('global-total-capital'),null,'real results appear after closure');
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().units,9);
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$359,91');
+    assert(w.document.querySelector('[data-operation-id="OP-EIGHT"] .ops-lot-details').textContent.includes('Facturación estimada del lote$319.92'));
+    assert(w.document.querySelector('[data-operation-id="OP-ONE"] .ops-lot-details').textContent.includes('Facturación estimada del lote$39.99'));
     assert.equal(w.AMAZON_CAPITAL_BALANCE('OP-EIGHT',96).afterPurchase,85,'editing replaces rather than adds the existing investment');
     // Existing purchase controls still enforce global capital and reject empty fields.
     w.MOTOR_SCORING_ENGINE.final={decision:'COMPRAR PILOTO',pilotUnits:1,pilotCapital:19};
@@ -100,6 +103,7 @@ function checkTabs(w){
     input(w,'op-buy-units','');w.document.getElementById('op-buy-confirm').click();
     assert.match(alerts.pop(),/Completa unidades/);assert.deepEqual(operations(w),baseline);
     input(w,'op-buy-units',1);input(w,'op-buy-investment',86);w.document.getElementById('op-buy-confirm').click();
+    assert(w.document.getElementById('op-lot-figures').textContent.includes('Facturación estimada del lote$39.99'));
     assert.match(alerts.pop(),/solo hay/);assert.deepEqual(operations(w),baseline);
     w.document.getElementById('op-buy-cancel').click();
     closeEditor(w,'OP-EIGHT');w.document.getElementById('op-confirm').click();
@@ -119,6 +123,7 @@ function checkTabs(w){
     const editor=input(w,'op-edit-units',9);w.AMAZON_COMPOUND_OPERATIONS.render();
     assert.equal(w.document.getElementById('op-edit-units'),editor);
     assert.equal(editor.closest('.ops-row').getAttribute('data-operation-id'),'OP-EIGHT','edit form belongs to its operation');
+    assert(w.document.getElementById('op-lot-figures').textContent.includes('Facturación estimada del lote$359.91'),'editing quantity updates forecast sales');
     checkTabs(w);assert.equal(w.document.getElementById('op-edit-units'),editor);assert.equal(editor.value,'9');
     w.document.getElementById('op-edit-cancel').click();assert.deepEqual(operations(w),baseline);
     closeEditor(w,'OP-EIGHT');fillClose(w);confirmClose(w);await wait(400);
@@ -139,6 +144,9 @@ function checkTabs(w){
     assert.equal(totals.realizedGains,40);assert.equal(totals.realizedLosses,0);
     assert.equal(w.document.querySelector('#global-realized-losses .v').textContent,'$0,00');
     assert.equal(totals.net,baseline[1].purchase.estimate.netTotal,'closed estimate leaves open totals');
+    assert.equal(totals.realizedSales,160);
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$160,00');
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$39,99');
     assert(w.document.getElementById('closed-operations-summary').textContent.includes('$40,00'));
     assert.equal(w.document.querySelector('.ops-close-btn[data-id="OP-EIGHT"]'),null);
     assert.equal(w.document.querySelector('#ops-list [data-operation-id="OP-EIGHT"]'),null,'closed operation leaves the active list');
@@ -155,6 +163,7 @@ function checkTabs(w){
     assert(w.document.getElementById('closed-operations-summary').compareDocumentPosition(archived)&w.Node.DOCUMENT_POSITION_FOLLOWING);
     const beforeConsult=storage(w);archiveFold.open=true;archived.open=true;
     assert(archived.textContent.includes('RESULTADO REAL:'));assert(archived.textContent.includes('COMPRA REAL:'));
+    assert(archived.textContent.includes('RESULTADO REAL: facturación $160.00'),'real sales are visible in closed OP');
     checkTabs(w);assert(archiveFold.open&&archived.open,'consultation stays expanded while navigating tabs');
     assert.deepEqual(storage(w),beforeConsult,'consulting a closed record never changes saved data');
     closeEditor(w,'OP-ONE');fillClose(w,{units:1});
@@ -180,6 +189,9 @@ function checkTabs(w){
     assert(w.document.getElementById('jev_global_capital').textContent.includes('Pérdidas reales incorporadas: $-19,00'));
     assert.equal(w.document.querySelector('#global-total-capital .v').textContent,'$321,00');
     totals=w.JEV_FINANCIAL_SYNC.globalTotals();assert.equal(totals.count,0);assert.equal(totals.net,0);
+    assert.equal(totals.realizedSales,160,'zero-sales loss never adds expected sales to real sales');
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$0,00');
+    assert(w.document.querySelector('.ops-closed-record[data-id="OP-ONE"]').textContent.includes('RESULTADO REAL: facturación $0.00'));
     const output=w.document.getElementById('p_out').textContent;
     assert(output.includes('0 compras abiertas'));assert(output.includes('$21,00'));
     assert(!output.includes('Infinity'));assert(!output.includes('NaN'));
@@ -193,12 +205,14 @@ function checkTabs(w){
     for(let i=0;i<4;i++)w.JEV_FINANCIAL_SYNC.sync();await wait(500);
     assert.equal(mutations,0,'global and realized output has no observer loop');observer.disconnect();
     // Same amounts as the user's two simulated closes: the loss stays visible beside a positive net.
-    const userCase=clone(bothClosed),userOps=JSON.parse(userCase[KEY]);userOps[0].actual.profit=124.43;
+    const userCase=clone(bothClosed),userOps=JSON.parse(userCase[KEY]);
+    Object.assign(userOps[0].actual,{profit:124.43,unitsSold:8,price:39.99,sales:319.92,roi:124.43/96,margin:124.43/319.92});
     userCase[KEY]=JSON.stringify(userOps);w.close();({w}=await mount(userCase));
     assert.equal(w.document.querySelector('#global-realized-gains .v').textContent,'$124,43');
     assert.equal(w.document.querySelector('#global-realized-losses .v').textContent,'$-19,00');
     assert.equal(w.document.querySelector('#global-realized-net .v').textContent,'$105,43');
     assert.equal(w.document.querySelector('#global-total-capital .v').textContent,'$405,43');
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$319,92');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43);
     assert(w.document.getElementById('jev_global_capital').textContent.includes('Ganancias reales incorporadas: $124,43 · Pérdidas reales incorporadas: $-19,00'));
     // Legacy closes may already have been included manually in the budget.
@@ -209,6 +223,9 @@ function checkTabs(w){
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().realized,40);
     assert.equal(w.JEV_FINANCIAL_SYNC.globalTotals().realizedGains,40);
     assert.equal(w.AMAZON_CAPITAL_BALANCE().realizedGains,0,'legacy gains stay separate from incorporated capital');
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'—','unknown historical sales are not silently zero');
+    old[0].actual.unitsSold=8;old[0].actual.price=20;w.localStorage.setItem(KEY,JSON.stringify(old));w.JEV_FINANCIAL_SYNC.sync();
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$160,00','legacy real sales derive from actual units and price');
     // Missing real results must not render a misleading zero for accumulated losses.
     const incomplete=clone(userCase),missing=JSON.parse(incomplete[KEY]);missing[1].actual.profit=null;
     incomplete[KEY]=JSON.stringify(missing);w.close();({w}=await mount(incomplete));
@@ -244,6 +261,7 @@ function checkTabs(w){
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43,'prediction does not reserve capital');
     const firstROI=w.document.querySelector('#prediction-roi .v').textContent;
     predictionInput('p_precio',35);assert.notEqual(w.document.querySelector('#prediction-roi .v').textContent,firstROI,'price changes update prediction');
+    w.JEV_FINANCIAL_SYNC.sync();assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$319,92','current analysis never overwrites actual recorded sales');
     predictionInput('p_precio',39.99);predictionInput('p_unid',8);
     const recommended=w.MOTOR_SCORING_ENGINE.final;
     assert.equal(recommended.decision,'COMPRAR PILOTO');assert.equal(recommended.pilotUnits,5);

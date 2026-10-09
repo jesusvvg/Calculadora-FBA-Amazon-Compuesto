@@ -67,6 +67,8 @@ function closeLot(w,id,units,profit){
     let ops=read(w,OPS);assert.equal(ops.length,2);const other=clone(ops[1]);
     assert.equal(other.product.asin,B);assert.equal(other.purchase.units,1);assert.equal(other.purchase.investment,19);
     assert.deepEqual(ops[0],originalA);assert.equal(w.AMAZON_CAPITAL_BALANCE().committed,115);assert.equal(w.AMAZON_CAPITAL_BALANCE().available,85);
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$359,91');
+    assert(w.document.querySelector(`[data-operation-id="${other.id}"] .ops-lot-details`).textContent.includes('Facturación estimada del lote$39.99'));
     // Archived budget/reserve values are historical context, not separate accounts for each ASIN.
     const catalog=read(w,CAT);catalog[A].inputs.p_presu='999';catalog[A].state.capital.reserveTarget=0;
     w.localStorage.setItem(CAT,JSON.stringify(catalog));change(w,'jev_asin',A);assert.equal(navigations(),1);
@@ -80,6 +82,8 @@ function closeLot(w,id,units,profit){
     assert.deepEqual(read(w,OPS)[1],other,'closing product A leaves product B unchanged');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().totalCapital,424.43);assert.equal(w.AMAZON_CAPITAL_BALANCE().committed,19);
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,305.43);
+    assert.equal(w.document.querySelector('#global-realized-sales .v').textContent,'$319,92');
+    assert.equal(w.document.querySelector('#global-estimated-sales .v').textContent,'$39,99');
     change(w,'jev_asin',B);data=saved(w);w.close();({w,alerts}=await mount(data));
     assert.equal(w.document.getElementById('p_unid').value,'1');assert.equal(w.document.getElementById('p_ppc').value,'0');
     assert.deepEqual(read(w,KEY).costs,stateB.costs);assert.deepEqual(read(w,KEY).market,stateB.market);

@@ -19,18 +19,25 @@ function realCostBreakdown(){
 
 function globalTotals(){
  var ops;try{ops=JSON.parse(localStorage.getItem("amazon_compuesto_operations_v1")||"[]");if(!Array.isArray(ops))throw new Error("history")}catch(e){return {count:0,invalid:true}}
- var t={count:0,closedCount:0,realized:0,realizedGains:0,realizedLosses:0,realizedComplete:true,units:0,investment:0,net:0,sales:0,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
+ var t={count:0,closedCount:0,realized:0,realizedGains:0,realizedLosses:0,realizedComplete:true,realizedSales:0,realizedSalesComplete:true,units:0,investment:0,net:0,sales:0,salesComplete:true,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
  function number(v){return v!==null&&v!==undefined&&v!==""&&isFinite(Number(v))?Number(v):null}
  ops.forEach(function(o){
   if(!o)return;
-  if(o.status==="CERRADA"&&o.purchase){t.closedCount++;var profit=o.actual&&number(o.actual.profit);if(profit===null||profit===undefined)t.realizedComplete=false;else {t.realized+=profit;if(profit>0)t.realizedGains+=profit;else if(profit<0)t.realizedLosses+=profit;}}
+  if(o.status==="CERRADA"&&o.purchase){
+   t.closedCount++;var actual=o.actual||{},profit=number(actual.profit);
+   if(profit===null)t.realizedComplete=false;else {t.realized+=profit;if(profit>0)t.realizedGains+=profit;else if(profit<0)t.realizedLosses+=profit;}
+   var actualSales=number(actual.sales),sold=number(actual.unitsSold),actualPrice=number(actual.price);
+   if(actualSales===null&&sold!==null&&sold>=0&&actualPrice!==null&&actualPrice>=0)actualSales=sold*actualPrice;
+   if(actualSales===null||actualSales<0)t.realizedSalesComplete=false;else t.realizedSales+=actualSales;
+  }
   if(o.status!=="ABIERTA")return;t.count++;
   var buy=o.purchase||{},b=buy.summary,f=b&&b.financial,inputs=b&&b.inputs,u=number(buy.units),investment=number(buy.investment);
-  if(u===null||u<=0||investment===null||investment<0){t.complete=false;t.breakdownComplete=false;return}
+  if(u===null||u<=0||investment===null||investment<0){t.complete=false;t.salesComplete=false;t.breakdownComplete=false;return}
   t.units+=u;t.investment+=investment;
   var price=inputs&&number(inputs.p_precio),net=f&&number(f.net);
+  if(price==null||price<0)t.salesComplete=false;else t.sales+=price*u;
   if(price===null||price===undefined||net===null||net===undefined){t.complete=false;t.breakdownComplete=false;return}
-  t.sales+=price*u;t.net+=net*u;
+  t.net+=net*u;
   var ref=number(inputs.p_ref),fba=number(inputs.p_fba),alm=number(inputs.p_almac),days=number(inputs.c_venta),ads=number(inputs.p_ppc),returns=number(f.returnCost);
   var parts=["checkout","prepUnit","supplier","other","prepAmazon"].map(function(k){return number(b[k])});
   if(ref===null||fba===null||alm===null||days===null||ads===null||returns===null||parts.some(function(x){return x===null})){t.breakdownComplete=false;return}
@@ -50,6 +57,7 @@ function syncGlobal(out){
  if(t.closedCount){
   if(!real){real=document.createElement("div");real.id="closed-operations-summary";real.className="card";out.appendChild(real);}
   var realHtml='<div class="cardtitle">Resultados reales · operaciones cerradas</div><div class="stats">'+
+   '<div id="global-realized-sales" class="stat"><div class="l">Total facturado real</div><div class="v">'+money(t.realizedSalesComplete?t.realizedSales:null)+'</div><div class="s">Ventas registradas de operaciones cerradas · antes de costos</div></div>'+
    '<div id="global-realized-gains" class="stat"><div class="l">Ganancias reales acumuladas</div><div class="v">'+money(t.realizedComplete?t.realizedGains:null)+'</div><div class="s">Suma de resultados positivos de lotes cerrados</div></div>'+
    '<div id="global-realized-losses" class="stat"><div class="l">Pérdidas reales acumuladas</div><div class="v '+(t.realizedLosses<0?'bad':'')+'">'+money(t.realizedComplete?t.realizedLosses:null)+'</div><div class="s">Suma de resultados negativos de lotes cerrados</div></div>'+
    '<div id="global-realized-net" class="stat"><div class="l">Ganancia/pérdida neta real</div><div class="v '+(t.realized<0?'bad':'')+'">'+money(t.realizedComplete?t.realized:null)+'</div><div class="s">Ganancias + pérdidas · '+t.closedCount+' lotes cerrados</div></div><div class="stat"><div class="l">Resultado incorporado al capital</div><div class="v">'+money(balance&&balance.complete?balance.realized:null)+'</div><div class="s">Solo cierres con liquidación confirmada</div></div><div id="global-total-capital" class="stat"><div class="l">Capital total actualizado</div><div class="v '+(balance&&balance.totalCapital<0?'bad':'')+'">'+money(balance&&balance.complete?balance.totalCapital:null)+'</div><div class="s">'+(balance&&balance.complete?'Presupuesto base: '+money(balance.budget)+' · Ganancia/pérdida real incorporada: '+money(balance.realized):'Balance de capital incompleto')+'</div></div></div>';
@@ -60,6 +68,8 @@ function syncGlobal(out){
   setStat(a[0],"Ganancia neta total estimada",money(t.complete&&!t.invalid?t.net:null),"Suma de compras abiertas · todavía no realizada",t.net<0?"bad":"");
   setStat(a[1],"Margen global estimado",pct(t.margin),"Ganancia total / ventas totales","");
   setStat(a[2],"ROI global estimado",pct(t.roi),"Ganancia total / inversión total","");
+  var salesStat=$("global-estimated-sales");if(!salesStat){salesStat=document.createElement("div");salesStat.id="global-estimated-sales";salesStat.className="stat";salesStat.innerHTML='<div class="l"></div><div class="v"></div><div class="s"></div>';stats[0].appendChild(salesStat)}
+  setStat(salesStat,"Facturación total estimada",money(t.salesComplete&&!t.invalid?t.sales:null),"Compras abiertas · unidades × precio de venta","");
  }
  if(c){
   setStat(c[0],"Capital comprometido total",money(balance&&balance.complete?balance.committed:null),"Todas las compras abiertas","");
