@@ -3,10 +3,10 @@
 var KEY="amazon_compuesto_operations_v1",SELECTED_KEY="amazon_compuesto_selected_purchase_v1";
 
 function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x:[]}catch(e){return []}}
-function save(x){try{localStorage.setItem(KEY,JSON.stringify(x));window.dispatchEvent(new Event("motor-scoring-operations-changed"))}catch(e){}}
+function save(x){try{localStorage.setItem(KEY,JSON.stringify(x));window.dispatchEvent(new Event("motor-scoring-operations-changed"));return true}catch(e){return false}}
 function esc(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function money(x){return x==null||!isFinite(x)?"—":"$"+Number(x).toFixed(2)}
-function num(x){var n=Number(x);return isFinite(n)?n:null}
+function num(x){if(x==null||String(x).trim()==="")return null;var n=Number(x);return isFinite(n)?n:null}
 function delta(actual,pred){return actual==null||pred==null?null:actual-pred}
 function pct(x){return x==null||!isFinite(x)?"—":(Number(x)*100).toFixed(1)+"%"}
 
@@ -260,24 +260,37 @@ function deleteOperation(id){
 }
 
 function closeForm(id){
- var ops=load(),o=ops.filter(function(x){return x.id===id})[0];if(!o)return;var q=o.prediction||{},a=o.actual||{};
- var html='<div class="ops-close"><b>Cerrar '+esc(id)+'</b><div class="ops-grid">'+
- '<label>Unidades vendidas<input id="op-units" type="number" min="0" value="'+esc(a.unitsSold==null?"":a.unitsSold)+'"></label>'+
- '<label>Precio real/u<input id="op-price" type="number" step="0.01" value="'+esc(a.price==null?"":a.price)+'"></label>'+
- '<label>ROI real %<input id="op-roi" type="number" step="0.1" value="'+esc(a.roi==null?"":(a.roi*100).toFixed(1))+'"></label>'+
- '<label>Margen real %<input id="op-margin" type="number" step="0.1" value="'+esc(a.margin==null?"":(a.margin*100).toFixed(1))+'"></label>'+
- '<label>Devoluciones<input id="op-returns" type="number" min="0" value="'+esc(a.returns==null?"":a.returns)+'"></label>'+
- '<label>Days to Cash real<input id="op-dtc" type="number" min="0" value="'+esc(a.daysToCash==null?"":a.daysToCash)+'"></label>'+
- '<label>Beneficio/pérdida total US$<input id="op-profit" type="number" step="0.01" value="'+esc(a.profit==null?"":a.profit)+'"></label></div><button id="op-confirm" class="ops-btn">Cerrar operación</button> <button id="op-cancel" class="ops-btn">Cancelar</button></div>';
+ var o=load().filter(function(x){return x.id===id})[0];if(!o||o.status!=="ABIERTA"||!o.purchase)return;var a=o.actual||{},buy=o.purchase;
+ if(num(buy.investment)==null||buy.investment<0||num(buy.units)==null||buy.units<1||buy.units%1!==0){alert("Corrige las unidades e inversión de esta compra antes de cerrarla.");return}
+ var html='<div class="ops-close"><b>Cerrar '+esc(id)+'</b><div class="ops-muted">Lote de '+esc(buy.units)+' unidades · inversión '+money(buy.investment)+'. Registra resultados finales, con todos los costos y pérdidas incluidos. Si aún hay inventario por vender o pagos pendientes, conserva la operación abierta.</div><div class="ops-grid">'+
+ '<label>Unidades vendidas netas de devoluciones<input id="op-units" type="number" min="0" step="1" max="'+esc(buy.units)+'" value="'+esc(a.unitsSold==null?"":a.unitsSold)+'"></label>'+
+ '<label>Precio promedio real/u · US$<input id="op-price" type="number" min="0" step="0.01" value="'+esc(a.price==null?"":a.price)+'"></label>'+
+ '<label>Unidades devueltas<input id="op-returns" type="number" min="0" step="1" max="'+esc(buy.units)+'" value="'+esc(a.returns==null?"":a.returns)+'"></label>'+
+ '<label>Días hasta recuperar el dinero<input id="op-dtc" type="number" min="0" step="1" value="'+esc(a.daysToCash==null?"":a.daysToCash)+'"></label>'+
+ '<label>Ganancia/pérdida neta total real · US$<input id="op-profit" type="number" step="0.01" value="'+esc(a.profit==null?"":a.profit)+'"></label></div><div id="op-close-figures" class="ops-costs" aria-live="polite"></div><label class="ops-muted"><input id="op-settled" type="checkbox"> El lote está liquidado: recibí los fondos y contabilicé cualquier pérdida o inventario residual.</label><div class="ops-muted">El cierre libera la inversión y suma la ganancia real (o resta la pérdida) al capital. No sumes ese resultado nuevamente al presupuesto.</div><button id="op-confirm" class="ops-btn">Cerrar operación</button> <button id="op-cancel" class="ops-btn">Cancelar</button></div>';
  var host=document.getElementById("ops-editor");host.innerHTML=html;
+ function results(){
+  var units=domNumber("op-units"),price=domNumber("op-price"),profit=domNumber("op-profit"),investment=num(buy.investment),sales=units!=null&&price!=null?units*price:null;
+  return {sales:sales,roi:profit!=null&&investment>0?profit/investment:null,margin:profit!=null&&sales>0?profit/sales:null};
+ }
+ function refresh(){var r=results(),profit=domNumber("op-profit"),balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE();
+  document.getElementById("op-close-figures").innerHTML='<div class="ops-costs-row"><span>Ventas reales netas</span><span>'+money(r.sales)+'</span></div><div class="ops-costs-row"><span>ROI real · ganancia / inversión</span><span>'+pct(r.roi)+'</span></div><div class="ops-costs-row"><span>Margen real · ganancia / ventas</span><span>'+pct(r.margin)+'</span></div><div class="ops-costs-row"><span>Capital disponible después del cierre</span><span>'+money(balance&&balance.complete&&profit!=null?balance.available+Number(buy.investment)+profit:null)+'</span></div>';
+ }
+ ["op-units","op-price","op-profit"].forEach(function(k){document.getElementById(k).addEventListener("input",refresh)});refresh();
  document.getElementById("op-cancel").onclick=function(){host.innerHTML="";cancelPreview()};
  document.getElementById("op-confirm").onclick=function(){
-  var units=num(document.getElementById("op-units").value),price=num(document.getElementById("op-price").value),roi=num(document.getElementById("op-roi").value),margin=num(document.getElementById("op-margin").value),returns=num(document.getElementById("op-returns").value),dtc=num(document.getElementById("op-dtc").value),profit=num(document.getElementById("op-profit").value);
-  if(units==null||price==null||roi==null||margin==null||returns==null||dtc==null||profit==null){alert("Completa todos los resultados reales antes de cerrar.");return}
-  o.actual={unitsSold:units,price:price,roi:roi/100,margin:margin/100,returns:returns,daysToCash:dtc,profit:profit};
+  var units=domNumber("op-units"),price=domNumber("op-price"),returns=domNumber("op-returns"),dtc=domNumber("op-dtc"),profit=domNumber("op-profit");
+  if(units==null||price==null||returns==null||dtc==null||profit==null){alert("Completa todos los resultados reales antes de cerrar. Si un valor es cero, escríbelo explícitamente.");return}
+  if(units<0||units%1!==0||units>buy.units||returns<0||returns%1!==0||returns>buy.units||price<0||dtc<0||dtc%1!==0){alert("Revisa unidades y devoluciones: deben ser enteras entre cero y las compradas. El precio y los días no pueden ser negativos; los días deben ser enteros.");return}
+  if(units>0&&price===0){alert("Ingresa un precio positivo para las unidades vendidas.");return}
+  if(!document.getElementById("op-settled").checked){alert("Confirma que el lote está liquidado y los fondos ya están disponibles antes de liberar su capital.");return}
+  var ops=load(),current=ops.filter(function(x){return x.id===id})[0];
+  if(!current||current.status!=="ABIERTA"||JSON.stringify(current.purchase)!==JSON.stringify(buy)){alert("La operación cambió. Abre nuevamente su formulario de cierre.");return}
+  var r=results(),q=current.prediction||{},estimate=buy.estimate||{},inputs=buy.summary&&buy.summary.inputs;
+  o=current;o.actual={unitsSold:units,price:price,sales:r.sales,roi:r.roi,margin:r.margin,returns:returns,daysToCash:dtc,profit:profit,capitalSettled:true};
   o.status="CERRADA";o.closedAt=new Date().toISOString();
-  o.variance={price:delta(o.actual.price,q.price),roi:delta(o.actual.roi,q.roi),margin:delta(o.actual.margin,q.margin),daysToCash:delta(o.actual.daysToCash,q.daysToCash)};
-  save(ops);render(true)
+  o.variance={price:delta(o.actual.price,inputs?inputs.p_precio:q.price),roi:delta(o.actual.roi,estimate.roi),margin:delta(o.actual.margin,estimate.margin),profit:delta(o.actual.profit,estimate.netTotal),daysToCash:delta(o.actual.daysToCash,q.daysToCash)};
+  if(!save(ops)){alert("No se pudo guardar el cierre. La operación sigue abierta; revisa el almacenamiento del navegador.");return}render(true)
  }
 }
 
@@ -296,7 +309,7 @@ function render(resetEditor,keepPreview){
    (buy&&buy.estimate?'<br><b>ESTIMACIÓN DEL LOTE:</b> ganancia '+money(buy.estimate.netTotal)+' · margen '+pct(buy.estimate.margin)+' · ROI '+pct(buy.estimate.roi):'')+
    (buy?operationLotHtml(o):'')+
    (ov?'<div class="ops-override"><b>OVERRIDE MANUAL</b><br>Recomendación JEV: '+esc(ov.recommendedUnits)+' u · Compra registrada: '+esc(ov.actualUnits)+' u.</div>':'')+
-   (o.status==="CERRADA"?'<b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN: precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
+   (o.status==="CERRADA"?'<br><b>RESULTADO REAL:</b> beneficio '+money(a.profit)+' · ROI '+pct(a.roi)+' · margen '+pct(a.margin)+' · DTC '+Math.round(a.daysToCash)+' días · devoluciones '+a.returns+'<br><span class="ops-muted">DESVIACIÓN'+(a.capitalSettled?' vs estimación del lote':'')+': precio '+money(v.price)+' · ROI '+pct(v.roi)+' · margen '+pct(v.margin)+' · '+(a.capitalSettled?'ganancia '+money(v.profit)+' · ':'')+'DTC '+(v.daysToCash==null?"—":(v.daysToCash>0?"+":"")+Math.round(v.daysToCash)+" días")+'</span>':
     (o.status==="ABIERTA"?'<div class="ops-actions"><button class="ops-btn ops-summary-btn" data-id="'+esc(o.id)+'">Ver resumen del lote</button><button class="ops-btn ops-close-btn" data-id="'+esc(o.id)+'">Registrar resultado real</button><button class="ops-btn ops-edit-btn" data-id="'+esc(o.id)+'">Editar compra</button><button class="ops-btn ops-delete-btn ops-danger" data-id="'+esc(o.id)+'">Eliminar operación</button></div>':''))+
    '<br><span class="ops-muted">Financial '+(q.financialScore==null?"—":q.financialScore)+' · Rotation '+(q.rotationScore==null?"—":q.rotationScore)+' · Market '+(q.marketScore==null?"—":q.marketScore)+' · Risk '+(q.riskScore==null?"—":q.riskScore)+' · Confidence '+(q.dataConfidence==null?"—":q.dataConfidence)+'</span></div>'
  }).join(""):'<div class="ops-empty">Todavía no hay análisis ni operaciones registradas.</div>')+

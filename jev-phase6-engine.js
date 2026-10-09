@@ -9,27 +9,32 @@
   function nval(id){var v=val(id);if(v==="")return null;var n=Number(v);return isFinite(n)?n:null}
   function setv(id,v){var e=$(id);if(e)e.value=(v===null||v===undefined)?"":String(v)}
 
-  // Budget is the user's total capital basis. Estimated profit is never cash.
+  // The budget is the capital basis; only explicitly settled real profits change it.
   function capitalBalance(excludeId,proposed){
-    var budget=nval("p_presu"),reserve=read().capital.reserveTarget,ops,committed=0,count=0;
+    var budget=nval("p_presu"),reserve=read().capital.reserveTarget,ops,committed=0,count=0,realized=0;
     reserve=reserve===null||reserve===undefined||reserve===""?null:Number(reserve);
     if(budget===null||budget<0||reserve===null||!isFinite(reserve)||reserve<0)return {complete:false,reason:"Define presupuesto total y reserva no negativos."};
     try{ops=JSON.parse(localStorage.getItem("amazon_compuesto_operations_v1")||"[]");if(!Array.isArray(ops))throw new Error("historial");}catch(e){return {complete:false,reason:"No se puede leer el historial; capital disponible desconocido."};}
     for(var i=0;i<ops.length;i++){
-      var o=ops[i];if(!o||o.status!=="ABIERTA")continue;
+      var o=ops[i];if(!o)continue;
+      if(o.status==="CERRADA"&&o.actual&&o.actual.capitalSettled===true){
+        var profit=o.actual.profit;if(profit===null||profit===undefined||profit===""||!isFinite(Number(profit)))return {complete:false,reason:"Un cierre liquidado no tiene ganancia o pérdida válida."};
+        realized+=Number(profit);
+      }
+      if(o.status!=="ABIERTA")continue;
       if(!o.purchase||o.purchase.investment===null||o.purchase.investment===undefined||o.purchase.investment==="")return {complete:false,reason:"Una compra abierta no tiene inversión válida."};
       var inv=Number(o.purchase.investment);if(!isFinite(inv)||inv<0)return {complete:false,reason:"Una compra abierta no tiene inversión válida."};
       if(o.id===excludeId)continue;committed+=inv;count++;
     }
-    var available=budget-reserve-committed;
+    var totalCapital=budget+realized,available=totalCapital-reserve-committed;
     if(proposed!==undefined&&proposed!==null){proposed=Number(proposed);if(!isFinite(proposed)||proposed<0)return {complete:false,reason:"Inversión propuesta inválida."};}
     else proposed=0;
-    return {complete:true,budget:budget,reserve:reserve,committed:committed,openCount:count,available:available,afterPurchase:available-proposed};
+    return {complete:true,budget:budget,realized:realized,totalCapital:totalCapital,reserve:reserve,committed:committed,openCount:count,available:available,afterPurchase:available-proposed};
   }
   window.AMAZON_CAPITAL_BALANCE=capitalBalance;
   function renderCapitalBalance(){
     var host=$("jev_global_capital");if(!host)return;var b=capitalBalance(),html=b.complete?
-      '<b>Capital global · compras abiertas</b><br>Presupuesto total: '+money(b.budget)+' · Invertido: '+money(b.committed)+' · Reserva: '+money(b.reserve)+'<br><b>Disponible para nuevas compras: '+money(b.available)+'</b> · '+b.openCount+' operación(es) abierta(s)<div class="hint">No incluye ganancias estimadas. Al cerrar operaciones, actualiza el presupuesto total con el capital realmente recuperado.</div>':
+      '<b>Capital global</b><br>Presupuesto base: '+money(b.budget)+' · Ganancia/pérdida real incorporada: '+money(b.realized)+'<br>Capital total actualizado: '+money(b.totalCapital)+' · Invertido: '+money(b.committed)+' · Reserva: '+money(b.reserve)+'<br><b>Disponible para nuevas compras: '+money(b.available)+'</b> · '+b.openCount+' operación(es) abierta(s)<div class="hint">Solo incorpora resultados reales de cierres liquidados; las estimaciones no aumentan el capital. No vuelvas a sumar estos resultados al presupuesto base. Los cierres anteriores sin confirmación de liquidación conservan el tratamiento manual previo.</div>':
       '<b>Capital global incompleto</b><br>'+b.reason;
     if(host.innerHTML!==html)host.innerHTML=html;
   }
@@ -43,7 +48,7 @@
     ".jev-engine-card{margin:0 0 14px;padding-bottom:10px}.jev-engine-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.jev-engine-big{font-family:var(--mono);font-size:23px;line-height:1}.jev-engine-band{font-size:11px;color:var(--muted);margin-top:4px;text-align:right}.jev-engine-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}.jev-engine-mini{border:1px solid var(--line);padding:8px 9px;background:#fff}.jev-engine-mini .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.jev-engine-mini .v{font-family:var(--mono);font-size:14px;margin-top:2px}.jev-engine-note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}.jev-engine-alert{font-size:11.5px;line-height:1.5;margin-top:7px;padding:7px 9px;background:var(--warnBg);border-left:3px solid var(--warn)}.jev-final{border:2px solid var(--deep);background:#fff;padding:15px;margin-bottom:14px}.jev-final .decision{font-family:var(--mono);font-size:26px;margin:5px 0}.jev-final.good{border-color:var(--good)}.jev-final.good .decision{color:var(--good)}.jev-final.warn{border-color:var(--warn)}.jev-final.warn .decision{color:var(--warn)}.jev-final.bad{border-color:var(--bad)}.jev-final.bad .decision{color:var(--bad)}@media(max-width:620px){.jev-engine-grid{grid-template-columns:1fr 1fr}.jev-engine-head{display:block}.jev-engine-band{text-align:left}}";document.head.appendChild(st)}
   function fnum(id,label,suffix,hint){return '<label class="f"><div class="flabel">'+label+'</div><div class="fbox"><input id="'+id+'" type="number" inputmode="decimal" step="0.01">'+(suffix?'<span class="fix">'+suffix+'</span>':'')+'</div>'+(hint?'<div class="hint">'+hint+'</div>':'')+'</label>'}
 
-  function buildUI(){var rr=$("jev_rotation_risk_block");if(!rr||$("jev_engine_inputs"))return;var box=document.createElement("div");box.id="jev_engine_inputs";box.innerHTML='<details class="jev-details"><summary>Capital · Motor Scoring</summary><div class="jev-details-body">'+fnum("jev_reserve","Reserva de liquidez objetivo","US$","Capital que Motor Scoring no debe comprometer en compras nuevas.")+'<div class="hint">Capital desplegable = presupuesto total − compras abiertas − reserva.</div></div></details>';rr.parentNode.insertBefore(box,rr.nextSibling);var balance=document.createElement("div");balance.id="jev_global_capital";balance.className="note";box.appendChild(balance);var risk=$("jev_risk_summary");if(risk&&!$("jev_financial_score")){var ids=["jev_financial_score","jev_cap_eff_score","jev_confidence_score","jev_final_decision"],classes=["card jev-engine-card","card jev-engine-card","card jev-engine-card","jev-final"];var prev=risk;ids.forEach(function(id,i){var e=document.createElement("div");e.id=id;e.className=classes[i];prev.parentNode.insertBefore(e,prev.nextSibling);prev=e})}}
+  function buildUI(){var rr=$("jev_rotation_risk_block");if(!rr||$("jev_engine_inputs"))return;var box=document.createElement("div");box.id="jev_engine_inputs";box.innerHTML='<details class="jev-details"><summary>Capital · Motor Scoring</summary><div class="jev-details-body">'+fnum("jev_reserve","Reserva de liquidez objetivo","US$","Capital que Motor Scoring no debe comprometer en compras nuevas.")+'<div class="hint">Capital desplegable = presupuesto base + resultados reales liquidados − compras abiertas − reserva.</div></div></details>';rr.parentNode.insertBefore(box,rr.nextSibling);var balance=document.createElement("div");balance.id="jev_global_capital";balance.className="note";box.appendChild(balance);var risk=$("jev_risk_summary");if(risk&&!$("jev_financial_score")){var ids=["jev_financial_score","jev_cap_eff_score","jev_confidence_score","jev_final_decision"],classes=["card jev-engine-card","card jev-engine-card","card jev-engine-card","jev-final"];var prev=risk;ids.forEach(function(id,i){var e=document.createElement("div");e.id=id;e.className=classes[i];prev.parentNode.insertBefore(e,prev.nextSibling);prev=e})}}
   function hydrate(){state=read();setv("jev_reserve",state.capital.reserveTarget)}
   function persist(){state=read();state.capital.reserveTarget=nval("jev_reserve");save();render()}
   function bind(){var r=$("jev_reserve");if(r){r.addEventListener("input",persist);r.addEventListener("change",persist)}["p_precio","p_ref","p_fba","p_almac","p_ppc","p_unid","p_presu","p_moneda","p_tc","c_venta","p_dias"].forEach(function(id){var e=$(id);if(e){e.addEventListener("input",render);e.addEventListener("change",render)}});window.addEventListener("motor-scoring-state-changed",function(){render()});window.addEventListener("motor-scoring-operations-changed",render)}

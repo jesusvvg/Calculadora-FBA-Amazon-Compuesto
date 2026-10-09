@@ -19,10 +19,12 @@ function realCostBreakdown(){
 
 function globalTotals(){
  var ops;try{ops=JSON.parse(localStorage.getItem("amazon_compuesto_operations_v1")||"[]");if(!Array.isArray(ops))throw new Error("history")}catch(e){return {count:0,invalid:true}}
- var t={count:0,units:0,investment:0,net:0,sales:0,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
+ var t={count:0,closedCount:0,realized:0,realizedComplete:true,units:0,investment:0,net:0,sales:0,referral:0,fba:0,product:0,prep:0,supplier:0,other:0,shipping:0,storage:0,ads:0,returns:0,complete:true,breakdownComplete:true};
  function number(v){return v!==null&&v!==undefined&&v!==""&&isFinite(Number(v))?Number(v):null}
  ops.forEach(function(o){
-  if(!o||o.status!=="ABIERTA")return;t.count++;
+  if(!o)return;
+  if(o.status==="CERRADA"&&o.purchase){t.closedCount++;var profit=o.actual&&number(o.actual.profit);if(profit===null||profit===undefined)t.realizedComplete=false;else t.realized+=profit;}
+  if(o.status!=="ABIERTA")return;t.count++;
   var buy=o.purchase||{},b=buy.summary,f=b&&b.financial,inputs=b&&b.inputs,u=number(buy.units),investment=number(buy.investment);
   if(u===null||u<=0||investment===null||investment<0){t.complete=false;t.breakdownComplete=false;return}
   t.units+=u;t.investment+=investment;
@@ -40,10 +42,16 @@ function globalTotals(){
  return t;
 }
 function syncGlobal(out){
- var t=globalTotals();if(!t.count&&!t.invalid)return false;
+ var t=globalTotals();if(!t.count&&!t.closedCount&&!t.invalid){var previous=$("closed-operations-summary");if(previous)previous.remove();return false;}
  var balance=window.AMAZON_CAPITAL_BALANCE&&window.AMAZON_CAPITAL_BALANCE(),context=$("purchase-summary-context");
  if(!context){context=document.createElement("div");context.id="purchase-summary-context";context.className="note";out.insertBefore(context,out.firstChild)}
- setText(context,"Resumen general · "+t.count+" compras abiertas · resultados estimados de todas las operaciones guardadas.");
+ setText(context,"Resumen general · "+t.count+" compras abiertas · "+(t.closedCount||0)+" cerradas. Las estimaciones corresponden solo a compras abiertas.");
+ var real=$("closed-operations-summary");
+ if(t.closedCount){
+  if(!real){real=document.createElement("div");real.id="closed-operations-summary";real.className="card";out.appendChild(real);}
+  var realHtml='<div class="cardtitle">Resultados reales · operaciones cerradas</div><div class="stats"><div class="stat"><div class="l">Ganancia/pérdida neta real</div><div class="v '+(t.realized<0?'bad':'')+'">'+money(t.realizedComplete?t.realized:null)+'</div><div class="s">'+t.closedCount+' lotes cerrados · independiente de las estimaciones</div></div><div class="stat"><div class="l">Resultado incorporado al capital</div><div class="v">'+money(balance&&balance.complete?balance.realized:null)+'</div><div class="s">Solo cierres con liquidación confirmada</div></div></div>';
+  if(real._motorScoringHtml!==realHtml){real.innerHTML=realHtml;real._motorScoringHtml=realHtml;}
+ }else if(real)real.remove();
  var stats=out.querySelectorAll(".stats"),a=stats[0]&&stats[0].querySelectorAll(".stat"),c=stats[1]&&stats[1].querySelectorAll(".stat");
  if(a){
   setStat(a[0],"Ganancia neta total estimada",money(t.complete&&!t.invalid?t.net:null),"Suma de compras abiertas · todavía no realizada",t.net<0?"bad":"");
@@ -52,7 +60,7 @@ function syncGlobal(out){
  }
  if(c){
   setStat(c[0],"Capital comprometido total",money(balance&&balance.complete?balance.committed:null),"Todas las compras abiertas","");
-  setStat(c[1],"Capital disponible",money(balance&&balance.complete?balance.available:null),"Presupuesto total − compras abiertas − reserva",balance&&balance.available<0?"bad":"");
+  setStat(c[1],"Capital disponible",money(balance&&balance.complete?balance.available:null),"Capital actualizado − compras abiertas − reserva",balance&&balance.available<0?"bad":"");
   setStat(c[2],"Reserva de liquidez",money(balance&&balance.complete?balance.reserve:null),"Apartada para proteger capital","");
   setStat(c[3],"Unidades registradas",t.invalid?"—":String(t.units),t.count+" compras abiertas","");
  }
