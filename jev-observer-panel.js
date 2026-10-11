@@ -45,9 +45,13 @@
     const host=d.getElementById('p-prod');
     if(!host || !adapter || !contract || d.getElementById('jev_observer_panel'))return;
     const style=node('style');style.textContent='#jev_observer_panel{padding-bottom:15px;margin-top:22px}#jev_observer_panel h2{font-size:18px;margin:0 0 8px}#jev_observer_panel button{min-height:44px;padding:8px 14px;font:inherit;border:1px solid var(--deep);background:#fff;color:var(--deep);cursor:pointer}#jev_observer_panel button:disabled{opacity:.5;cursor:default}.jev-observer-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.jev-observer-primary{background:var(--deep)!important;color:#fff!important}.jev-observer-note{font-size:12px;color:var(--muted);margin:8px 0}.jev-observer-result{margin-top:15px}.jev-observer-access{margin:12px 0;padding:12px;border:1px solid var(--line)}.jev-observer-summary{padding:14px;margin:12px 0;border-left:4px solid var(--deep);background:#f4f7f8}.jev-observer-summary h3{font-size:17px;margin:0 0 8px}.jev-observer-summary p{margin:8px 0}#jev_observer_result td{vertical-align:top}#jev_observer_result td p{margin:6px 0;line-height:1.5}#jev_observer_result details{margin-top:8px}';d.head.appendChild(style);
-    style.textContent+='#jev_observer_layout{margin-top:22px}#jev_observer_panel{margin-top:0;min-width:0}#jev_observer_result td{overflow-wrap:anywhere}@media(min-width:820px){#jev_observer_panel{grid-column:2}}';
-    const layout=node('div',undefined,host);layout.id='jev_observer_layout';layout.className='grid';
-    const panel=node('section',undefined,layout);panel.id='jev_observer_panel';panel.className='card';panel.setAttribute('aria-labelledby','jev_observer_heading');
+    style.textContent+='#jev_observer_panel{min-width:0}#jev_observer_result td{overflow-wrap:anywhere}';
+    const panel=node('section',undefined,host);panel.id='jev_observer_panel';panel.className='card';panel.setAttribute('aria-labelledby','jev_observer_heading');
+    function placePanel(){
+      const operations=d.getElementById('operations_history');
+      if(operations&&operations.parentNode&&operations.nextElementSibling!==panel)operations.after(panel);
+    }
+    w.setTimeout(placePanel,100);w.setTimeout(placePanel,300);
     node('h2','JEV · Observación externa',panel).id='jev_observer_heading';
     node('p','Consulta complementaria con los datos introducidos. Las compras y el capital siguen bajo el control del Motor Scoring.',panel).className='jev-observer-note';
     const connection=node('p','Comprobando servidor local…',panel);connection.id='jev_observer_connection';
@@ -123,6 +127,7 @@
       if(record.saved===false)node('p','La respuesta se recibió, pero no se pudo guardar la observación en este navegador.',result);
     }
     function refresh() {
+      placePanel();
       let valid=false, reason='';
       try {
         const snapshot=adapter.captureBrowser(w,{dataOrigin:trial.checked?'SIMULATED':'MANUAL'}),plan=contract.buildRequest(snapshot.state);

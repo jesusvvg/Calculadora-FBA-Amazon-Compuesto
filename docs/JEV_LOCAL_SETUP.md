@@ -264,8 +264,11 @@ Las seis tarjetas Market, Rotation, Risk, Financial, Capital Efficiency y
 Data Confidence son desplegables, cerradas al cargar la página. El encabezado
 conserva puntuación y clasificación; los componentes y advertencias quedan
 dentro. Cambiar datos actualiza las cifras sin cerrar el detalle abierto. La
-decisión principal permanece visible. El panel local de JEV mantiene su lugar
-al final y usa la misma columna y ancho de la decisión en escritorio; en
+decisión principal permanece visible. El panel local de JEV se sitúa justo
+debajo del bloque «Registrar compra», como hermano de ese bloque dentro de
+la misma columna de la decisión. Así conserva el mismo ancho y no queda
+desplazado al final de los campos de la columna izquierda. Al actualizar el
+formulario de compra se conserva el panel y su acceso en memoria; en
 pantallas pequeñas ambos ocupan todo el ancho disponible.
 
 A petición de Jesús, la interfaz reúne el piloto del Motor Scoring y las

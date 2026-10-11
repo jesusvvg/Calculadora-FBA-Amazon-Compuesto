@@ -70,6 +70,9 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     assert.deepEqual(errors,[]);assert.equal(w.MOTOR_SCORING_SELF_TEST.failed,0);
     assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'COMPRAR PILOTO');
     assert(w.document.getElementById('jev_observer_panel'),'local page mounts the observation panel');
+    const localPanel=w.document.getElementById('jev_observer_panel'),operationsRoot=w.document.getElementById('operations_history');
+    assert.equal(operationsRoot.nextElementSibling,localPanel,'JEV sits directly below the purchase registration block in the same column');
+    assert.equal(localPanel.parentNode,w.document.getElementById('jev_final_decision').parentNode,'JEV and Motor Scoring decision share the same column width');
     assert.equal(calls.length,0,'opening the panel never calls the paid provider');
     assert(w.document.getElementById('jev_observer_evaluate').disabled,'private access is required');
     for(const name of ['jev-observer-contract.js','jev-observer-adapter.js'])await new Promise((resolve,reject)=>{
@@ -140,6 +143,7 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     assert.equal(chosen.baseline.recommendationAppliesToChosenLot,false,'an override cannot claim to be the scored recommendation');
     assert.equal(chosen.state.lot.netProfitUnitUsd,w.MOTOR_SCORING_ENGINE.evaluatePurchaseFinancial(2,30).net);
     w.document.getElementById('op-buy-cancel').click();
+    assert.equal(w.document.getElementById('operations_history').nextElementSibling,localPanel,'rerendering the purchase form preserves JEV position and panel identity');
     const storage=clone(saved(w));const originalSet=w.Storage.prototype.setItem;
     w.Storage.prototype.setItem=function(k,v){if(k===adapter.RECORD_KEY)throw new Error('quota');return originalSet.call(this,k,v);};
     const unsaved=await observer.evaluate();assert.equal(unsaved.status,'READY');assert.equal(unsaved.saved,false);assert.deepEqual(saved(w),storage);
