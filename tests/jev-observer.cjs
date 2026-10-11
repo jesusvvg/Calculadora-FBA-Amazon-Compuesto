@@ -155,13 +155,14 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     assert.match(get('jev_observer_result').textContent,/Tokens de entrada: 1000/);
     assert.match(get('jev_observer_result').textContent,/escenario ficticio/);
     get('jev_observer_simulated').checked=false;get('jev_observer_simulated').dispatchEvent(new w.Event('change',{bubbles:true}));
-    assert.match(get('jev_observer_result').textContent,/datos cambiaron/i,'changing provenance expires the observation');
+    assert.match(get('jev_observer_status').textContent,/datos cambiaron/i,'changing provenance expires the observation');
+    assert.equal((get('jev_observer_panel').textContent.match(/Los datos cambiaron\./g)||[]).length,1,'the stale notice appears only once');
     get('jev_observer_simulated').checked=true;get('jev_observer_simulated').dispatchEvent(new w.Event('change',{bubbles:true}));
     assert.deepEqual(saved(w),panelStorage,'panel changes only isolated observation storage');
     assert.deepEqual(clone(w.AMAZON_CAPITAL_BALANCE()),panelCapital);
     assert(!JSON.stringify({...w.localStorage}).includes(token),'panel never persists the local access token');
     get('jev_asin').value='B0OTHER1234';await wait(1100);
-    assert(panelButton.disabled);assert.match(get('jev_observer_result').textContent,/datos cambiaron/i);
+    assert(panelButton.disabled);assert.match(get('jev_observer_status').textContent,/datos cambiaron/i);
     assert.equal(get('jev_observer_result').querySelectorAll('tbody tr').length,0,'stale probabilities are removed');
     assert.equal(calls.length,count+1,'editing the product never triggers a paid request');
     get('jev_asin').value=state.product.asin;get('jev_observer_lock').click();

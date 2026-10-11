@@ -45,7 +45,7 @@
     function draw(record) {
       const key=record ? record.analysisId+'|'+record.status+'|'+record.saved : '';
       if(key===drawn)return;drawn=key;result.replaceChildren();
-      if(!record)return;
+      if(!record || record.status==='STALE')return;
       if(record.status!=='READY'){node('p',messages[record.status]||'Consulta pendiente.',result);return;}
       node('p','Observación para '+record.identity.asin+' · '+record.state.lot.selectedUnits+' unidad(es) · '+new Date(record.completedAt).toLocaleString('es-CL'),result);
       node('p','Datos: '+(record.state.dataOrigin==='SIMULATED'?'escenario ficticio':'introducidos manualmente; no verificados por JEV')+'.',result).className='jev-observer-note';
@@ -75,7 +75,7 @@
       evaluate.disabled=busy||!enabled||!observer||!valid;lock.disabled=busy||!observer;unlock.disabled=busy||!!observer;trial.disabled=busy;
       if(busy)return;
       const latest=observer&&observer.latest();draw(latest);
-      status.textContent=!enabled?'Servidor local pendiente o JEV desactivado.':!observer?'Habilita el acceso privado para consultar.':!valid?reason:latest&&latest.status==='STALE'?messages.STALE:'Consulta manual disponible. No se envían datos hasta pulsar el botón.';
+      status.textContent=!enabled?'Servidor local pendiente o JEV desactivado.':!observer?'Habilita el acceso privado para consultar.':latest&&latest.status==='STALE'?messages.STALE+(!valid&&reason?' '+reason:''):!valid?reason:'Consulta manual disponible. No se envían datos hasta pulsar el botón.';
     }
     async function checkConnection() {
       check.disabled=true;

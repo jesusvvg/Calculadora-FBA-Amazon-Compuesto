@@ -194,9 +194,45 @@ ocultación de resultados desactualizados y exclusión de la API de la caché.
 Los cálculos y el comportamiento de operaciones no cambiaron; se corrigieron
 sus etiquetas para distinguir el Motor Scoring del JEV externo. Se modificaron
 `index.html` para cargar el panel y `sw.js` para sus archivos y la API privada.
-La inspección visual en un navegador del entorno de desarrollo quedó pendiente
-por no disponer de un ejecutable de Chromium; se revisará en el equipo local.
+La inspección visual se realizó mediante capturas del navegador del usuario.
+No se dispuso de un ejecutable de Chromium en el entorno de desarrollo.
 
-Próximo bloque: actualizar la copia local, revisar el panel visible y comparar
-juicios en observación con datos suficientes. La rama de respaldo
-anterior a JEV permanece en el commit `e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.
+### Consulta manual desde el panel verificada
+
+El 2026-10-11, a las 16:54 de America/Santiago, el usuario consultó una vez
+desde el panel local con «Escenario de prueba · datos ficticios para JEV»
+marcado. El ASIN inventado `B0TESTJEV0` identificó localmente un lote de una
+unidad y US$19 de entrada, sin registrar una compra. Motor Scoring mostró
+COMPRAR PILOTO, US$9,91 de ganancia estimada y US$181 disponibles tras el lote.
+Los valores visibles incluyen los costos que estaban configurados en esa
+copia local; no deben confundirse con resultados realizados.
+
+JEV respondió con el modelo `jev-1.13.0`, 1968 tokens de entrada y 239 de
+salida. El panel indicó explícitamente «Datos: escenario ficticio».
+
+| Evaluación | Distribución de clasificaciones | Confianza |
+|---|---|---:|
+| Resistencia financiera | Con respaldo 32%; cautela 59%; datos insuficientes 9% | 0.38 |
+| Rotación | Con respaldo 27%; sin respaldo 7%; datos insuficientes 66% | 0.49 |
+| Competencia | Manejable 100%; presión 0%; datos insuficientes 0% | 1.00 |
+| Inventario inmovilizado | Sin señal material 78%; riesgo 9%; datos insuficientes 13% | 0.67 |
+| Evidencia para el piloto | Con respaldo para revisión 7%; sin respaldo 9%; datos insuficientes 84% | 0.76 |
+
+Al cambiar el precio de US$39,99 a US$38,99, el usuario confirmó que las filas
+de resultados desaparecieron y el panel mostró que la observación ya no
+correspondía al análisis actual. No se solicitó otra consulta. Se corrigió
+la repetición visual de ese aviso, conservándolo una sola vez en el estado
+del panel.
+
+Esta validación confirma la conexión y el flujo de observación. No mide la
+precisión comercial de JEV ni valida demanda, elegibilidad o un producto real.
+«Datos insuficientes» es una clasificación del modelo; la respuesta no
+incluye una explicación ni identifica por sí misma campos faltantes.
+
+Próximo bloque: contrastar el flujo con evidencia verificable de un producto
+real y aclarar los campos heredados COGS/flete que siguen visibles aunque el
+Motor Scoring utiliza el desglose de Costo real y Prep Center. El resumen de
+resultados reales se conserva y aparece al existir operaciones cerradas; los
+registros de la aplicación habitual no se trasladan automáticamente al origen
+local. La rama de respaldo anterior a JEV permanece en el commit
+`e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.
