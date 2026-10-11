@@ -130,6 +130,12 @@ Se muestra el lote consultado, cinco evaluaciones o sus omisiones, confianza,
 probabilidades por opción y tokens. No existe un porcentaje de éxito comercial
 ni un promedio combinado con el Motor Scoring.
 
+Para datos ficticios, marcar «Escenario de prueba · datos ficticios para JEV».
+El envío y su registro quedan etiquetados `SIMULATED`; cambiar esta opción
+invalida una observación anterior. La opción se reinicia al recargar la página.
+Las etiquetas de registro de compras y análisis atribuyen las predicciones
+internas al Motor Scoring; no cambian cálculos ni claves de almacenamiento.
+
 - `evaluate()` ejecuta una consulta explícita y devuelve su estado.
 - `latest()` detecta que un resultado ya no corresponde al formulario actual.
 - Una segunda llamada mientras hay una en curso devuelve `PENDING`.
@@ -185,7 +191,8 @@ de almacenamiento. Las regresiones de cierres y de múltiples ASIN también
 pasaron. Las pruebas del panel cubren acceso requerido, borrado del campo de
 token, una sola consulta ante clics duplicados, cinco filas de resultados,
 ocultación de resultados desactualizados y exclusión de la API de la caché.
-Los módulos originales de cálculo y operaciones no cambiaron. Se modificaron
+Los cálculos y el comportamiento de operaciones no cambiaron; se corrigieron
+sus etiquetas para distinguir el Motor Scoring del JEV externo. Se modificaron
 `index.html` para cargar el panel y `sw.js` para sus archivos y la API privada.
 La inspección visual en un navegador del entorno de desarrollo quedó pendiente
 por no disponer de un ejecutable de Chromium; se revisará en el equipo local.

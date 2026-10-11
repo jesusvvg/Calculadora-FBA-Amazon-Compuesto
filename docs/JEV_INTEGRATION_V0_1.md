@@ -8,7 +8,8 @@ verificó una consulta autenticada real con un escenario sintético: `READY`,
 `jev-1.13.0`, 1.950 tokens de entrada y 239 de salida. No hay servidor público
 desplegado. Los módulos de cálculo y operaciones conservan su implementación;
 la interfaz y su caché cargan el observador local. No se certifican resultados
-del modelo en Amazon.
+del modelo en Amazon. Se corrigieron las etiquetas heredadas de operaciones
+para atribuir las predicciones internas al Motor Scoring, sin cambiar cálculos.
 
 ## 1. Base confirmada
 

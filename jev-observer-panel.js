@@ -31,6 +31,9 @@
     const unlock=node('button','Habilitar acceso',accessActions);unlock.type='button';unlock.id='jev_observer_unlock';
     const lock=node('button','Bloquear acceso',accessActions);lock.type='button';lock.id='jev_observer_lock';lock.disabled=true;
     const accessMessage=node('p','Acceso pendiente.',access);accessMessage.id='jev_observer_access_status';accessMessage.setAttribute('role','status');
+    const trialLabel=node('label',undefined,panel);trialLabel.className='jev-observer-note';
+    const trial=node('input',undefined,trialLabel);trial.type='checkbox';trial.id='jev_observer_simulated';
+    trialLabel.appendChild(d.createTextNode(' Escenario de prueba · datos ficticios para JEV'));
     const baseline=node('p','',panel);baseline.id='jev_observer_baseline';baseline.className='jev-observer-note';
     const actions=node('div',undefined,panel);actions.className='jev-observer-actions';
     const evaluate=node('button','Consultar JEV · consume saldo',actions);evaluate.id='jev_observer_evaluate';evaluate.type='button';evaluate.className='jev-observer-primary';evaluate.disabled=true;
@@ -38,7 +41,7 @@
     const status=node('p','Completa el análisis y habilita el acceso privado.',panel);status.id='jev_observer_status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
     const result=node('div',undefined,panel);result.id='jev_observer_result';result.className='jev-observer-result';
     node('p','La confianza y las probabilidades describen la clasificación de JEV. No son probabilidades de vender, ganar dinero o recuperar capital.',panel).className='jev-observer-note';
-    let observer=null, busy=false, enabled=false, drawn='';
+    let observer=null, captureOptions=null, busy=false, enabled=false, drawn='';
     function draw(record) {
       const key=record ? record.analysisId+'|'+record.status+'|'+record.saved : '';
       if(key===drawn)return;drawn=key;result.replaceChildren();
@@ -64,12 +67,12 @@
     function refresh() {
       let valid=false, reason='';
       try {
-        const snapshot=adapter.captureBrowser(w),plan=contract.buildRequest(snapshot.state);
+        const snapshot=adapter.captureBrowser(w,{dataOrigin:trial.checked?'SIMULATED':'MANUAL'}),plan=contract.buildRequest(snapshot.state);
         valid=Object.keys(plan.request.questions).length>0;
         baseline.textContent='Motor Scoring: '+snapshot.baseline.final.decision+' · ASIN '+snapshot.identity.asin+' · Lote consultado: '+snapshot.state.lot.selectedUnits+' unidad(es), US$'+snapshot.state.lot.entryCapitalUsd.toFixed(2);
         if(!valid)reason='Faltan datos de mercado actuales para formular una consulta.';
       }catch(error){baseline.textContent='';reason=error.message;}
-      evaluate.disabled=busy||!enabled||!observer||!valid;lock.disabled=busy||!observer;unlock.disabled=busy||!!observer;
+      evaluate.disabled=busy||!enabled||!observer||!valid;lock.disabled=busy||!observer;unlock.disabled=busy||!!observer;trial.disabled=busy;
       if(busy)return;
       const latest=observer&&observer.latest();draw(latest);
       status.textContent=!enabled?'Servidor local pendiente o JEV desactivado.':!observer?'Habilita el acceso privado para consultar.':!valid?reason:latest&&latest.status==='STALE'?messages.STALE:'Consulta manual disponible. No se envían datos hasta pulsar el botón.';
@@ -87,9 +90,11 @@
     unlock.addEventListener('click',()=>{
       const value=token.value.trim();token.value='';
       if(!/^[a-f0-9]{64}$/.test(value)){accessMessage.textContent='El token local debe tener 64 caracteres hexadecimales. Usa JEV_ACCESS_TOKEN.';return;}
-      observer=adapter.browserObserver(w,{accessToken:value});accessMessage.textContent='Acceso preparado en memoria. El servidor lo verificará al consultar.';token.disabled=true;access.open=false;refresh();
+      captureOptions={accessToken:value,dataOrigin:trial.checked?'SIMULATED':'MANUAL'};
+      observer=adapter.browserObserver(w,captureOptions);accessMessage.textContent='Acceso preparado en memoria. El servidor lo verificará al consultar.';token.disabled=true;access.open=false;refresh();
     });
-    lock.addEventListener('click',()=>{observer=null;token.disabled=false;token.value='';accessMessage.textContent='Acceso bloqueado.';drawn='';result.replaceChildren();refresh();});
+    lock.addEventListener('click',()=>{observer=null;captureOptions=null;token.disabled=false;token.value='';accessMessage.textContent='Acceso bloqueado.';drawn='';result.replaceChildren();refresh();});
+    trial.addEventListener('change',()=>{if(captureOptions)captureOptions.dataOrigin=trial.checked?'SIMULATED':'MANUAL';refresh();});
     check.addEventListener('click',checkConnection);
     evaluate.addEventListener('click',async()=>{
       if(busy||evaluate.disabled||!observer)return;
