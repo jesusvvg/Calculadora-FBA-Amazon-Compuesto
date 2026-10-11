@@ -2,10 +2,11 @@
 
 Fecha de revisión: 2026-10-11, America/Santiago.
 
-Estado: diseño y ejemplo de petición preparados. No hay conexión activa, servidor
-desplegado, credencial configurada ni llamada autenticada verificada. Los archivos
-de la calculadora siguen intactos. Este documento define el siguiente bloque de
-implementación; no certifica resultados del modelo en Amazon.
+Estado: contrato, adaptador y servidor privado local implementados; ver
+`JEV_LOCAL_SETUP.md`. No hay conexión activa, servidor público desplegado,
+credencial real configurada ni llamada autenticada real verificada. Los archivos
+originales de la calculadora siguen intactos. No se certifican resultados del
+modelo en Amazon.
 
 ## 1. Base confirmada
 
@@ -225,13 +226,17 @@ ESPERAR/DESCARTAR a COMPRAR. Esa política no está habilitada ahora.
   histórico con separación temporal de entrenamiento/evaluación. No elegir
   un umbral universal de 0.5 ni fijar porcentajes de éxito sin evidencia.
 
-## 9. Lo que queda por implementar
+## 9. Implementación y pendientes
 
-1. Adaptador de instantánea y selección de campos, aislado de compras/cierres.
-2. Endpoint privado con secreto TypeSafe, autenticación y control de gasto.
-3. Validación estricta de respuesta y prueba autenticada.
-4. Panel JEV opcional con estados explícitos y registro separado.
-5. Banco de comparación y revisión de las cinco preguntas.
+1. Implementado: adaptador de instantánea y selección de campos, aislado de
+   compras/cierres; historial separado y detección de resultados caducados.
+2. Implementado para prueba local: endpoint privado con secreto TypeSafe,
+   autenticación, límites por proceso y validación estricta de respuesta.
+3. Pendiente: configurar credencial real y verificar llamada autenticada.
+4. Pendiente: panel JEV opcional. Los nuevos módulos aún no se cargan desde
+   `index.html` ni desde la caché de la PWA.
+5. Implementado: banco sintético de integración y fallos. Pendiente: medir
+   desempeño real y valor adicional de las cinco preguntas.
 
 La cuenta, credencial y entorno de servidor aún no están configurados en esta
 sesión. No pedir ni pegar la clave en el chat: configurarla como secreto del
