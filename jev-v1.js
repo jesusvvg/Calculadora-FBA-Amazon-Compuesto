@@ -142,7 +142,11 @@
     wrapper.id = "jev_right";
     parent.insertBefore(wrapper, out);
     var purchases=$("p-purchases");
-    if(purchases)purchases.appendChild(out);else wrapper.appendChild(out);
+    if(purchases){
+      purchases.appendChild(out);
+      var business=$("amazon-business-summary");
+      if(business)purchases.appendChild(business);
+    }else wrapper.appendChild(out);
 
     var gate = document.createElement("div");
     gate.id = "jev_gate";
