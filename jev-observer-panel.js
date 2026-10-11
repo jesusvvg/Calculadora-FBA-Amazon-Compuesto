@@ -166,7 +166,7 @@
       catch{busy=false;status.textContent='Consulta no disponible. No se reintentó.';refresh();}
     });
     for(const event of ['input','change'])d.addEventListener(event,e=>{if(!panel.contains(e.target))w.setTimeout(refresh,0);});
-    for(const event of ['motor-scoring-state-changed','motor-scoring-operations-changed','storage'])w.addEventListener(event,()=>w.setTimeout(refresh,0));
+    for(const event of ['motor-scoring-state-changed','motor-scoring-operations-changed','motor-scoring-expenses-changed','storage'])w.addEventListener(event,()=>w.setTimeout(refresh,0));
     w.setInterval(refresh,1000);checkConnection();
   }
   if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',init);else init();

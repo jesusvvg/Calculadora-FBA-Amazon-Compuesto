@@ -1,7 +1,8 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261011-jev-position-64";
+var CACHE = "fba-calc-motor-scoring-v1-20261011-plan-expenses-65";
 var ASSETS = [
   "./",
   "./index.html",
+  "./amazon-plan-expenses.js?v=65",
   "./jev-v1.js",
   "./jev-phase2.js",
   "./jev-phase3.js",
