@@ -260,6 +260,14 @@ muestra devoluciones 0. No son ventas reales ni una medición de precisión come
 
 ### Lectura conjunta en lenguaje claro
 
+Las seis tarjetas Market, Rotation, Risk, Financial, Capital Efficiency y
+Data Confidence son desplegables, cerradas al cargar la página. El encabezado
+conserva puntuación y clasificación; los componentes y advertencias quedan
+dentro. Cambiar datos actualiza las cifras sin cerrar el detalle abierto. La
+decisión principal permanece visible. El panel local de JEV mantiene su lugar
+al final y usa la misma columna y ancho de la decisión en escritorio; en
+pantallas pequeñas ambos ocupan todo el ancho disponible.
+
 A petición de Jesús, la interfaz reúne el piloto del Motor Scoring y las
 clasificaciones de JEV en una tarjeta «Lectura conjunta · Motor Scoring + JEV»
 en el lugar de la decisión principal. La evaluación financiera original

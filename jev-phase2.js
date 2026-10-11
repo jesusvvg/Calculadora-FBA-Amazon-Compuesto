@@ -26,6 +26,7 @@
       ".jev-details summary:after{content:'+';float:right;font-family:var(--mono)}"+
       ".jev-details[open] summary:after{content:'−'}"+
       ".jev-details-body{padding:2px 12px 12px;border-top:1px solid var(--line)}"+
+      ".jev-score-disclosure>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none}.jev-score-disclosure>summary::-webkit-details-marker{display:none}.jev-score-disclosure>summary:before{content:'+';font-family:var(--mono);flex-shrink:0}.jev-score-disclosure[open]>summary:before{content:'−'}.jev-score-disclosure>summary:focus-visible{outline:2px solid var(--deep);outline-offset:4px}.jev-score-disclosure>summary .cardtitle{margin:0;flex:1}.jev-score-disclosure>summary .jev-score-overview{text-align:right;flex-shrink:0}.jev-score-disclosure>summary .jev-market-score,.jev-score-disclosure>summary .jev-score-big,.jev-score-disclosure>summary .jev-engine-big{font-size:15px;line-height:1.3}.jev-score-disclosure-body{border-top:1px solid var(--line);margin-top:10px;padding-top:4px}@media(max-width:420px){.jev-score-disclosure>summary{flex-wrap:wrap}.jev-score-disclosure>summary .jev-score-overview{width:100%;text-align:left;padding-left:20px}.jev-score-disclosure>summary .jev-market-band,.jev-score-disclosure>summary .jev-score-band,.jev-score-disclosure>summary .jev-engine-band{text-align:left}}"+
       ".jev-precheck{margin:0 0 14px;padding-bottom:8px}"+
       ".jev-precheck-row{display:grid;grid-template-columns:minmax(115px,.8fr) 1.4fr;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}"+
       ".jev-precheck-row .k{color:var(--muted)}.jev-precheck-row .v{font-family:var(--mono);font-size:12px}"+
@@ -40,6 +41,16 @@
       "@media(max-width:520px){.jev-precheck-row{grid-template-columns:1fr;gap:2px}}";
     document.head.appendChild(st);
   }
+
+  window.MOTOR_SCORING_FOLD_SCORE=function(card){
+    if(!card||card.tagName!=="DETAILS")return;
+    var head=card.firstElementChild;if(!head)return;
+    var title=head.querySelector(".cardtitle"),score=head.querySelector(".jev-market-score,.jev-score-big,.jev-engine-big"),band=head.querySelector(".jev-market-band,.jev-score-band,.jev-engine-band"),note=head.querySelector(".jev-market-note,.jev-score-note,.jev-engine-note");
+    var summary=document.createElement("summary"),overview=document.createElement("div");overview.className="jev-score-overview";
+    if(title)summary.appendChild(title);if(score)overview.appendChild(score);if(band)overview.appendChild(band);summary.appendChild(overview);
+    var body=document.createElement("div");body.className="jev-score-disclosure-body";if(note)body.appendChild(note);head.remove();
+    while(card.firstChild)body.appendChild(card.firstChild);card.appendChild(summary);card.appendChild(body);
+  };
 
   function sel(id,label,opts,hint){return '<label class="f"><div class="flabel">'+label+'</div><select id="'+id+'">'+opts.map(function(o){return '<option value="'+o+'">'+o+'</option>'}).join("")+'</select>'+(hint?'<div class="hint">'+hint+'</div>':'')+'</label>'}
   function txt(id,label,ph){return '<label class="f"><div class="flabel">'+label+'</div><div class="fbox"><input id="'+id+'" type="text" autocomplete="off"'+(ph?' placeholder="'+ph+'"':'')+'></div></label>'}

@@ -79,7 +79,7 @@
 
     var cap=$("jev_capital_summary");
     if(cap&&!$("jev_market_summary")){
-      var card=document.createElement("div");card.id="jev_market_summary";card.className="card jev-market-card";
+      var card=document.createElement("details");card.id="jev_market_summary";card.className="card jev-market-card jev-score-disclosure";
       cap.parentNode.insertBefore(card,cap.nextSibling);
     }
   }
@@ -181,6 +181,7 @@
       '<div class="jev-market-grid">'+r.components.map(function(c){return '<div class="jev-market-mini"><div class="k">'+c.k+'</div><div class="v">'+(c.o.score===null?'—':round5(c.o.score))+'</div><div class="jev-market-note">'+c.o.detail+'</div></div>'}).join("")+'</div>'+
       (r.warnings.length?r.warnings.map(function(w){return '<div class="jev-market-warn">'+w+'</div>'}).join(""):'<div class="jev-market-note">Sin alertas fuertes con los datos cargados.</div>')+
       '<div class="jev-market-note">Fuente: MANUAL · '+checked+' · El score se redondea a bloques de 5 para evitar precisión artificial.</div>';
+    window.MOTOR_SCORING_FOLD_SCORE(card);
     window.MOTOR_SCORING_MARKET={result:r,evaluate:evaluate};
   }
 

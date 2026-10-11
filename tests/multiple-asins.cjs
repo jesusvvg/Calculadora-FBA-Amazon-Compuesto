@@ -42,6 +42,9 @@ function closeLot(w,id,units,profit){
   try{
     let {w,alerts,navigations}=await mount();const originalA=clone(read(w,OPS)[0]);
     const originalFin=clone(w.MOTOR_SCORING_ENGINE.financial);
+    const scoreIds=['jev_market_summary','jev_rotation_summary','jev_risk_summary','jev_financial_score','jev_cap_eff_score','jev_confidence_score'];
+    for(const id of scoreIds){const card=w.document.getElementById(id);assert.equal(card.tagName,'DETAILS');assert.equal(card.open,false,'score detail starts collapsed');assert(card.querySelector(':scope > summary .cardtitle'));assert(card.querySelector(':scope > .jev-score-disclosure-body'));}
+    assert.equal(w.document.getElementById('jev_final_decision').tagName,'DIV','main decision stays visible');
     assert.equal(w.document.getElementById('p_cogs').value,'10');
     assert.equal(w.document.getElementById('p_flete').value,'7');
     assert(w.document.getElementById('p_cogs').readOnly&&w.document.getElementById('p_flete').readOnly,'cost summaries cannot become a second editable cost source');
@@ -106,8 +109,12 @@ function closeLot(w,id,units,profit){
     assert.deepEqual(saved(w),beforeFailure);w.Storage.prototype.setItem=set;
     // Currency conversion only changes the reference display; it never rewrites source costs or saved lots.
     ({w}=await mount());const lotsBeforeCurrency=clone(read(w,OPS));
+    for(const id of scoreIds)w.document.getElementById(id).open=true;
     change(w,'p_moneda','CAD');input(w,'p_tc',2);input(w,'jev_discount',2);input(w,'jev_tax',1);
+    await wait(300);
     w.JEV_FINANCIAL_SYNC.sync();
+    for(const id of scoreIds)assert(w.document.getElementById(id).open,'editing inputs preserves the open score detail');
+    assert.equal(w.document.querySelector('#jev_financial_score > summary .jev-engine-big').textContent,w.MOTOR_SCORING_ENGINE.financial.score+'/100','collapsed heading uses the latest calculated score');
     assert.equal(w.document.getElementById('p_cogs').value,'9','checkout reference includes discount and tax in purchase currency');
     assert.equal(w.document.getElementById('p_flete').value,'8','USD Prep-to-Amazon freight converts before adding purchase-currency supplier freight');
     const costsBeforeSync=clone(read(w,KEY).costs),finBeforeSync=clone(w.MOTOR_SCORING_ENGINE.financial);
