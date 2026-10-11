@@ -68,9 +68,17 @@ capital, manteniendo una referencia reproducible del análisis.
 Dato necesario: instantánea del lote efectivamente elegido, economía calculada,
 mercado manual, fechas/fuentes y campos faltantes explícitos.
 
-Efecto inicial sobre una decisión: ninguno. JEV opera en **modo observación**.
-Se muestran o registran sus juicios aparte; las recomendaciones, operaciones y
-capital siguen controlados por el sistema actual.
+JEV opera en **modo observación**. La interfaz cruza su evaluación con el
+piloto calculado por Motor Scoring y presenta una lectura conjunta en texto.
+Los cálculos originales quedan disponibles en un detalle desplegable. Las
+reglas de recomendación, las operaciones y el capital siguen controlados por
+el sistema actual; la lectura conjunta no modifica ni autoriza compras.
+
+El cruce identifica observaciones y evidencia insuficiente. No promedia el
+puntaje heurístico del Motor Scoring con probabilidades o confianza de JEV:
+son cantidades distintas, sin calibración conjunta frente a resultados reales.
+Una probabilidad futura de éxito requeriría definir el resultado objetivo y
+validar el modelo con historial real y datos reservados para esa validación.
 
 Riesgo principal: JEV y Scoring reciben datos comunes y pueden equivocarse de
 forma correlacionada. Coincidir no demuestra acierto. Si solo repite las reglas,
@@ -88,7 +96,7 @@ flowchart TD
   B --> D["Servidor privado · JEV"]
   C --> E["Recomendación actual"]
   D --> F["Juicios en observación"]
-  E --> G["Comparación registrada"]
+  E --> G["Lectura conjunta para revisión"]
   F --> G
 ```
 

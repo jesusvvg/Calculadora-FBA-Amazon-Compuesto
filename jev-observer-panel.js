@@ -8,6 +8,33 @@
   const choices = {supported:'Con respaldo', caveat_detected:'Señal de cautela', insufficient_data:'Datos insuficientes',
     unsupported:'Sin respaldo', manageable:'Manejable', pressure_detected:'Presión detectada',
     no_material_signal:'Sin señal material', lockup_signal:'Riesgo de inmovilización', supported_for_review:'Con respaldo para revisión'};
+  const readings = {
+    financial_resilience:{supported:'JEV considera respaldada la resistencia financiera con los datos enviados.',
+      caveat_detected:'JEV señala una cautela financiera. La respuesta no especifica su causa.',
+      insufficient_data:'La información enviada no basta para evaluar la resistencia financiera.'},
+    rotation_support:{supported:'JEV considera respaldada la estimación de rotación con los datos enviados.',
+      unsupported:'JEV considera que los datos enviados no respaldan la estimación de rotación.',
+      insufficient_data:'Falta evidencia para respaldar cuánto y en qué plazo vendería este lote.'},
+    market_pressure:{manageable:'JEV clasifica la presión competitiva como manejable con los datos enviados.',
+      pressure_detected:'JEV detecta presión competitiva en la información enviada.',
+      insufficient_data:'La información enviada no basta para evaluar la presión competitiva.'},
+    inventory_lockup:{no_material_signal:'JEV no detecta una señal relevante de inventario inmovilizado en los datos enviados.',
+      lockup_signal:'JEV detecta una señal de posible inmovilización del inventario.',
+      insufficient_data:'La información enviada no basta para evaluar la inmovilización del inventario.'},
+    pilot_evidence:{supported_for_review:'JEV considera que la información respalda revisar un piloto pequeño.',
+      unsupported:'JEV considera que la información enviada no respalda el piloto.',
+      insufficient_data:'Falta evidencia suficiente para respaldar el piloto.'}
+  };
+  function readingSummary(answers) {
+    const cautions=[],missing=[];
+    for(const id of Object.keys(labels)){
+      const answer=answers[id];
+      if(!answer || answer.choice==='insufficient_data')missing.push(labels[id]);
+      else if(['caveat_detected','unsupported','pressure_detected','lockup_signal'].includes(answer.choice))cautions.push(labels[id]);
+    }
+    return {cautions,missing,title:cautions.length?(missing.length?'Revisar piloto y completar evidencia':'Piloto con observaciones'):
+      missing.length?'Completar evidencia antes de avanzar':'Piloto sin observaciones adicionales de JEV'};
+  }
   const messages = {BLOCKED:'El Motor Scoring o las condiciones del lote impiden consultar este piloto.',
     INSUFFICIENT_DATA:'Faltan datos para evaluar este producto.', AUTH_REQUIRED:'El servidor rechazó el acceso. Revisa el token local.',
     DISABLED:'JEV está desactivado en el servidor.', UNAVAILABLE:'JEV no está disponible. No se reintentó la consulta.',
@@ -17,7 +44,7 @@
   function init() {
     const host=d.getElementById('p-prod');
     if(!host || !adapter || !contract || d.getElementById('jev_observer_panel'))return;
-    const style=node('style');style.textContent='#jev_observer_panel{padding-bottom:15px;margin-top:22px}#jev_observer_panel h2{font-size:18px;margin:0 0 8px}#jev_observer_panel button{min-height:44px;padding:8px 14px;font:inherit;border:1px solid var(--deep);background:#fff;color:var(--deep);cursor:pointer}#jev_observer_panel button:disabled{opacity:.5;cursor:default}.jev-observer-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.jev-observer-primary{background:var(--deep)!important;color:#fff!important}.jev-observer-note{font-size:12px;color:var(--muted);margin:8px 0}.jev-observer-result{margin-top:15px}.jev-observer-access{margin:12px 0;padding:12px;border:1px solid var(--line)}';d.head.appendChild(style);
+    const style=node('style');style.textContent='#jev_observer_panel{padding-bottom:15px;margin-top:22px}#jev_observer_panel h2{font-size:18px;margin:0 0 8px}#jev_observer_panel button{min-height:44px;padding:8px 14px;font:inherit;border:1px solid var(--deep);background:#fff;color:var(--deep);cursor:pointer}#jev_observer_panel button:disabled{opacity:.5;cursor:default}.jev-observer-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.jev-observer-primary{background:var(--deep)!important;color:#fff!important}.jev-observer-note{font-size:12px;color:var(--muted);margin:8px 0}.jev-observer-result{margin-top:15px}.jev-observer-access{margin:12px 0;padding:12px;border:1px solid var(--line)}.jev-observer-summary{padding:14px;margin:12px 0;border-left:4px solid var(--deep);background:#f4f7f8}.jev-observer-summary h3{font-size:17px;margin:0 0 8px}.jev-observer-summary p{margin:8px 0}#jev_observer_result td{vertical-align:top}#jev_observer_result td p{margin:6px 0;line-height:1.5}#jev_observer_result details{margin-top:8px}';d.head.appendChild(style);
     const panel=node('section',undefined,host);panel.id='jev_observer_panel';panel.className='card';panel.setAttribute('aria-labelledby','jev_observer_heading');
     node('h2','JEV · Observación externa',panel).id='jev_observer_heading';
     node('p','Consulta complementaria con los datos introducidos. Las compras y el capital siguen bajo el control del Motor Scoring.',panel).className='jev-observer-note';
@@ -41,24 +68,53 @@
     const status=node('p','Completa el análisis y habilita el acceso privado.',panel);status.id='jev_observer_status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
     const result=node('div',undefined,panel);result.id='jev_observer_result';result.className='jev-observer-result';
     node('p','La confianza y las probabilidades describen la clasificación de JEV. No son probabilidades de vender, ganar dinero o recuperar capital.',panel).className='jev-observer-note';
-    let observer=null, captureOptions=null, busy=false, enabled=false, drawn='';
+    let observer=null, captureOptions=null, busy=false, enabled=false, drawn='',joint=null,motorDetails=null;
+    function clearJoint() {
+      const motor=d.getElementById('jev_final_decision');
+      if(motorDetails&&motor&&motor.parentNode===motorDetails)motorDetails.parentNode.insertBefore(motor,motorDetails);
+      if(joint)joint.remove();if(motorDetails)motorDetails.remove();joint=null;motorDetails=null;
+    }
+    function drawJoint(record) {
+      clearJoint();
+      const motor=d.getElementById('jev_final_decision');if(!motor)return;
+      joint=node('section');joint.id='jev_observer_interpretation';joint.className='card jev-observer-summary';
+      motor.parentNode.insertBefore(joint,motor);
+      const interpretation=readingSummary(record.result.answers),sameLot=record.baseline.recommendationAppliesToChosenLot;
+      node('div','Lectura conjunta · Motor Scoring + JEV',joint).className='cardtitle';
+      node('h3',sameLot?interpretation.title:'Revisar lote distinto al piloto calculado',joint);
+      node('p','Producto '+record.identity.asin+' · '+(record.state.dataOrigin==='SIMULATED'?'escenario ficticio':'datos introducidos manualmente')+'.',joint);
+      node('p',sameLot?'El Motor Scoring permite un piloto de '+record.state.lot.selectedUnits+' unidad(es), con US$'+record.state.lot.entryCapitalUsd.toFixed(2)+' de capital de entrada.':
+        'El Motor Scoring calculó un piloto distinto. La consulta de JEV corresponde al lote elegido de '+record.state.lot.selectedUnits+' unidad(es), por US$'+record.state.lot.entryCapitalUsd.toFixed(2)+'.',joint);
+      if(interpretation.cautions.length)node('p','JEV añade observaciones en: '+interpretation.cautions.join(', ')+'.',joint);
+      if(interpretation.missing.length)node('p','JEV considera insuficiente la evidencia para: '+interpretation.missing.join(', ')+'.',joint);
+      if(!interpretation.cautions.length&&!interpretation.missing.length)node('p','JEV no añade señales de alerta ni clasificaciones de evidencia insuficiente en estas cinco evaluaciones.',joint);
+      if(interpretation.cautions.length||interpretation.missing.length)node('p','La lectura conjunta requiere revisar estas observaciones y la evidencia antes de avanzar con el piloto.',joint);
+      node('p',record.state.dataOrigin==='SIMULATED'?'Resultado de prueba: los datos son ficticios y no validan un producto real.':'Las clasificaciones se basan en los datos enviados; JEV no comprobó su veracidad en Amazon.',joint).className='jev-observer-note';
+      node('p','Resumen de las reglas del Motor Scoring y las categorías de JEV. JEV no aportó una explicación de sus motivos ni una lista exacta de datos faltantes. No se mezclan sus puntajes ni se autoriza una compra automáticamente.',joint).className='jev-observer-note';
+      motorDetails=node('details');motorDetails.id='jev_observer_motor_detail';motorDetails.className='jev-details';
+      node('summary','Ver evaluación y cálculo del Motor Scoring',motorDetails);
+      motor.parentNode.insertBefore(motorDetails,motor);motorDetails.appendChild(motor);
+    }
     function draw(record) {
       const key=record ? record.analysisId+'|'+record.status+'|'+record.saved : '';
-      if(key===drawn)return;drawn=key;result.replaceChildren();
+      if(key===drawn)return;drawn=key;result.replaceChildren();clearJoint();
       if(!record || record.status==='STALE')return;
       if(record.status!=='READY'){node('p',messages[record.status]||'Consulta pendiente.',result);return;}
       node('p','Observación para '+record.identity.asin+' · '+record.state.lot.selectedUnits+' unidad(es) · '+new Date(record.completedAt).toLocaleString('es-CL'),result);
       node('p','Datos: '+(record.state.dataOrigin==='SIMULATED'?'escenario ficticio':'introducidos manualmente; no verificados por JEV')+'.',result).className='jev-observer-note';
+      drawJoint(record);
+      node('p','La lectura conjunta aparece en la tarjeta de decisión. Aquí puedes revisar el detalle de JEV.',result).className='jev-observer-note';
       const scroll=node('div',undefined,result);scroll.className='scroll';const table=node('table',undefined,scroll);
-      const head=node('tr',undefined,node('thead',undefined,table));['Evaluación','Resultado','Confianza'].forEach(t=>node('th',t,head));
+      const head=node('tr',undefined,node('thead',undefined,table));['Evaluación','Lectura del resultado'].forEach(t=>node('th',t,head));
       const body=node('tbody',undefined,table);
       Object.keys(labels).forEach(id=>{
         const row=node('tr',undefined,body), answer=record.result.answers[id];node('td',labels[id],row);
-        if(!answer){node('td','Omitida: faltan datos actuales',row);node('td','—',row);return;}
-        const cell=node('td',choices[answer.choice]||answer.choice,row);
-        const details=node('details',undefined,cell);node('summary','Ver probabilidades',details);
+        if(!answer){node('td','Sin evaluación: faltan datos actuales para formular esta consulta.',row);return;}
+        const cell=node('td',undefined,row);node('strong',choices[answer.choice]||answer.choice,cell);
+        node('p',readings[id][answer.choice],cell);
+        const details=node('details',undefined,cell);node('summary','Ver probabilidades y confianza',details);
         for(const [choice,probability]of Object.entries(answer.probabilities))node('div',(choices[choice]||choice)+': '+(probability*100).toFixed(1)+'%',details);
-        node('td',answer.confidence.toFixed(2),row).className='n';
+        node('p','Confianza de clasificación: '+answer.confidence.toFixed(2)+'. No es una probabilidad de éxito comercial.',details).className='jev-observer-note';
       });
       node('p','Modelo: '+record.result.model+' · Tokens de entrada: '+record.result.usage.input_tokens+' · salida: '+record.result.usage.output_tokens,result).className='jev-observer-note';
       if(!record.baseline.recommendationAppliesToChosenLot)node('p','El lote consultado difiere del piloto recomendado inicialmente por el Motor Scoring.',result);
@@ -93,12 +149,12 @@
       captureOptions={accessToken:value,dataOrigin:trial.checked?'SIMULATED':'MANUAL'};
       observer=adapter.browserObserver(w,captureOptions);accessMessage.textContent='Acceso preparado en memoria. El servidor lo verificará al consultar.';token.disabled=true;access.open=false;refresh();
     });
-    lock.addEventListener('click',()=>{observer=null;captureOptions=null;token.disabled=false;token.value='';accessMessage.textContent='Acceso bloqueado.';drawn='';result.replaceChildren();refresh();});
+    lock.addEventListener('click',()=>{observer=null;captureOptions=null;token.disabled=false;token.value='';accessMessage.textContent='Acceso bloqueado.';drawn='';result.replaceChildren();clearJoint();refresh();});
     trial.addEventListener('change',()=>{if(captureOptions)captureOptions.dataOrigin=trial.checked?'SIMULATED':'MANUAL';refresh();});
     check.addEventListener('click',checkConnection);
     evaluate.addEventListener('click',async()=>{
       if(busy||evaluate.disabled||!observer)return;
-      busy=true;status.textContent='Consultando JEV una vez…';result.replaceChildren();drawn='';refresh();
+      busy=true;status.textContent='Consultando JEV una vez…';result.replaceChildren();clearJoint();drawn='';refresh();
       try{const record=await observer.evaluate();busy=false;refresh();draw(record);if(record.status!=='READY')status.textContent=record.message||messages[record.status]||'Consulta no disponible.';}
       catch{busy=false;status.textContent='Consulta no disponible. No se reintentó.';refresh();}
     });

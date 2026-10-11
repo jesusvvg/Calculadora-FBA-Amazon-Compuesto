@@ -22,7 +22,7 @@ function saved(w){return Object.fromEntries(Object.keys(w.localStorage).filter(k
 async function listen(server){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;}
 async function close(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
 (async()=>{
-  let mode='ready', calls=[], slowResolve;
+  let mode='ready', readingMode='favorable', calls=[], slowResolve;
   const mockFetch=async(url,init)=>{
     assert.equal(url,'https://api.typesafe.ai/v1/systemone');
     assert.equal(init.headers.Authorization,'Bearer '+apiKey);
@@ -35,6 +35,15 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     if(mode==='timeout')await new Promise((resolve,reject)=>init.signal.addEventListener('abort',()=>reject(new Error('abort')),{once:true}));
     if(['401','429','529'].includes(mode))return new Response('{}',{status:Number(mode)});
     const reply=responseFor(request);
+    if(readingMode!=='favorable'){
+      for(const [id,answer]of Object.entries(reply.answers)){
+        const choice=readingMode==='insufficient'?'insufficient_data':
+          id==='financial_resilience'?'caveat_detected':
+          ['rotation_support','pilot_evidence'].includes(id)?'insufficient_data':answer.choice;
+        answer.choice=choice;answer.confidence=1;
+        answer.probabilities=Object.fromEntries(Object.keys(answer.probabilities).map(k=>[k,k===choice?1:0]));
+      }
+    }
     if(mode==='invalid')reply.answers.pilot_evidence.probabilities[reply.answers.pilot_evidence.choice]=.7;
     if(mode==='oversize')return new Response(JSON.stringify({data:'x'.repeat(70000)}));
     return new Response(JSON.stringify(reply),{status:200,headers:{'Content-Type':'application/json'}});
@@ -154,9 +163,28 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     assert.equal(get('jev_observer_result').querySelectorAll('tbody tr').length,5);
     assert.match(get('jev_observer_result').textContent,/Tokens de entrada: 1000/);
     assert.match(get('jev_observer_result').textContent,/escenario ficticio/);
+    assert.match(get('jev_observer_interpretation').textContent,/Lectura conjunta · Motor Scoring \+ JEV/);
+    assert.match(get('jev_observer_interpretation').textContent,/Piloto sin observaciones adicionales de JEV/);
+    assert.match(get('jev_observer_interpretation').textContent,/piloto de 1 unidad\(es\), con US\$19.00/);
+    assert.equal(get('jev_observer_motor_detail').open,false,'the original calculation remains available as a collapsed detail');
+    assert.equal(get('jev_final_decision').parentNode,get('jev_observer_motor_detail'));
+    assert.deepEqual(clone(w.MOTOR_SCORING_ENGINE.final),decision,'the joint presentation never changes the Scoring decision');
+    assert.equal(get('jev_observer_result').querySelectorAll('thead th').length,2,'the default reading uses text instead of a numerical confidence column');
+    assert.equal(get('jev_observer_result').querySelectorAll('details').length,5);
+    assert(get('jev_observer_result').querySelector('details').textContent.includes('Confianza de clasificación'));
+    readingMode='insufficient';panelButton.click();await wait(80);
+    assert.match(get('jev_observer_interpretation').textContent,/Completar evidencia antes de avanzar/);
+    assert(!get('jev_observer_interpretation').textContent.includes('Piloto sin observaciones'));
+    readingMode='caution';panelButton.click();await wait(80);readingMode='favorable';
+    assert.match(get('jev_observer_interpretation').textContent,/Revisar piloto y completar evidencia/);
+    assert.match(get('jev_observer_interpretation').textContent,/observaciones en: Resistencia financiera/);
+    assert.match(get('jev_observer_interpretation').textContent,/evidencia para: Rotación, Evidencia para el piloto/);
+    assert.deepEqual(clone(w.MOTOR_SCORING_ENGINE.final),decision);
     get('jev_observer_simulated').checked=false;get('jev_observer_simulated').dispatchEvent(new w.Event('change',{bubbles:true}));
     assert.match(get('jev_observer_status').textContent,/datos cambiaron/i,'changing provenance expires the observation');
     assert.equal((get('jev_observer_panel').textContent.match(/Los datos cambiaron\./g)||[]).length,1,'the stale notice appears only once');
+    assert.equal(get('jev_observer_interpretation'),null,'the combined reading is removed when the source observation expires');
+    assert.notEqual(get('jev_final_decision').parentNode.id,'jev_observer_motor_detail','the Scoring card is restored after expiration');
     get('jev_observer_simulated').checked=true;get('jev_observer_simulated').dispatchEvent(new w.Event('change',{bubbles:true}));
     assert.deepEqual(saved(w),panelStorage,'panel changes only isolated observation storage');
     assert.deepEqual(clone(w.AMAZON_CAPITAL_BALANCE()),panelCapital);
@@ -164,7 +192,7 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     get('jev_asin').value='B0OTHER1234';await wait(1100);
     assert(panelButton.disabled);assert.match(get('jev_observer_status').textContent,/datos cambiaron/i);
     assert.equal(get('jev_observer_result').querySelectorAll('tbody tr').length,0,'stale probabilities are removed');
-    assert.equal(calls.length,count+1,'editing the product never triggers a paid request');
+    assert.equal(calls.length,count+3,'editing the product never triggers a paid request');
     get('jev_asin').value=state.product.asin;get('jev_observer_lock').click();
     assert(panelButton.disabled);assert.equal(get('jev_observer_result').textContent,'');
     // Private API GETs must bypass the service-worker cache, including offline fallback.

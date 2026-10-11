@@ -236,3 +236,36 @@ resultados reales se conserva y aparece al existir operaciones cerradas; los
 registros de la aplicación habitual no se trasladan automáticamente al origen
 local. La rama de respaldo anterior a JEV permanece en el commit
 `e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.
+
+### Lectura conjunta en lenguaje claro
+
+A petición de Jesús, la interfaz reúne el piloto del Motor Scoring y las
+clasificaciones de JEV en una tarjeta «Lectura conjunta · Motor Scoring + JEV»
+en el lugar de la decisión principal. La evaluación financiera original
+permanece disponible en «Ver evaluación y cálculo del Motor Scoring».
+
+| Señales de JEV con un piloto admitido por Motor Scoring | Lectura conjunta |
+|---|---|
+| Las cinco clasificaciones son favorables | Piloto sin observaciones adicionales de JEV |
+| Hay cautela, falta de respaldo o señal de presión/inmovilización | Piloto con observaciones |
+| Hay alguna evaluación omitida o clasificada como datos insuficientes | Completar evidencia antes de avanzar |
+| Hay observaciones y evidencia insuficiente | Revisar piloto y completar evidencia |
+| El lote elegido difiere del piloto calculado por Motor Scoring | Revisar lote distinto al piloto calculado |
+
+Este texto es un resumen de reglas y categorías, no una explicación generada
+por JEV. No inventa el motivo concreto de una cautela ni una lista exacta de
+campos que corregir. El escenario ficticio conserva su advertencia visible.
+No se promedian puntajes y probabilidades, ni se usan umbrales de confianza
+sin validar para fabricar una probabilidad de éxito comercial.
+
+Las cinco filas de JEV incluyen una explicación breve de lo que significa la
+categoría. Sus probabilidades y confianza permanecen dentro de «Ver
+probabilidades y confianza», sin una columna numérica en la lectura principal.
+Cuando cambian los datos, se retira también la conclusión conjunta y se
+restaura la tarjeta original del Motor Scoring. Al bloquear el acceso se
+retira la lectura conjunta de la sesión.
+
+La suite del observador comprueba los casos favorables, de evidencia
+insuficiente y de cautela junto a evidencia insuficiente; verifica el texto,
+la conservación de cálculos/capital y el retiro de una lectura desactualizada.
+Estas comprobaciones usan respuestas simuladas y no consumen saldo TypeSafe.
