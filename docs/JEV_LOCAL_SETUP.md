@@ -230,12 +230,33 @@ precisión comercial de JEV ni valida demanda, elegibilidad o un producto real.
 incluye una explicación ni identifica por sí misma campos faltantes.
 
 Próximo bloque: contrastar el flujo con evidencia verificable de un producto
-real y aclarar los campos heredados COGS/flete que siguen visibles aunque el
-Motor Scoring utiliza el desglose de Costo real y Prep Center. El resumen de
+real. El Motor Scoring utiliza el desglose de Costo real y Prep Center. El resumen de
 resultados reales se conserva y aparece al existir operaciones cerradas; los
 registros de la aplicación habitual no se trasladan automáticamente al origen
 local. La rama de respaldo anterior a JEV permanece en el commit
 `e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.
+
+### Resumen automático de COGS y fletes
+
+Los dos campos heredados se conservan como referencias de solo lectura del
+producto actual. COGS muestra precio menos descuento más impuesto por unidad,
+desde Checkout. Flete muestra proveedor → Prep más Prep → Amazon, total del
+lote en la moneda de compra; el tramo Prep → Amazon, introducido en USD, se
+convierte antes de sumar. La preparación y otros gastos siguen separados en
+el desglose y no se incluyen en este resumen de fletes. Si faltan datos, la
+referencia queda vacía. Estos campos no sobrescriben los costos detallados,
+el cálculo del Motor Scoring ni operaciones guardadas.
+
+Para el escenario ficticio de esta sesión, las referencias son US$10 por
+unidad y US$7 de fletes por lote. Los US$19 de inversión incluyen además
+US$1 de preparación y US$1 de otros gastos. Pruebas aisladas verifican cambio
+de ASIN sin arrastrar importes, descuento/impuesto, conversión CAD/USD y
+conservación de compras y resultados.
+
+Jesús confirmó visualmente el resumen tras cerrar una operación ficticia:
+facturación US$39,99, costos US$30,08, ganancia US$9,91, capital actualizado
+US$309,91 y disponible US$209,91 con reserva US$100. La captura de la operación
+muestra devoluciones 0. No son ventas reales ni una medición de precisión comercial.
 
 ### Lectura conjunta en lenguaje claro
 

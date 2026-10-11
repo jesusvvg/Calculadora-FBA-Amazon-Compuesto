@@ -7,6 +7,18 @@ function n(id){var e=$(id);if(!e||e.value==="")return 0;var v=Number(e.value);re
 function readState(){try{var s=JSON.parse(localStorage.getItem("jev_v1")||"{}");return s&&typeof s==="object"?s:{}}catch(e){return {}}}
 function setText(node,value){if(node&&node.textContent!==value)node.textContent=value}
 function setStat(node,label,value,sub,tone){if(!node)return;var l=node.querySelector(".l"),v=node.querySelector(".v"),s=node.querySelector(".s");if(l&&label)setText(l,label);if(v){setText(v,value);var cls="v "+(tone||"");if(v.className!==cls)v.className=cls}if(s&&sub!=null)setText(s,sub)}
+function syncCostReferences(){
+ if(!window.MOTOR_SCORING_ENGINE)return;
+ var s=readState(),c=s.costs&&s.costs.checkout||{},p=s.costs&&s.costs.prep||{};
+ function value(x){return x!==null&&x!==undefined&&x!==""&&isFinite(Number(x))?Number(x):null}
+ var displayed=value(c.displayedUnit),tax=value(c.taxUnit),discount=value(c.discountUnit),supplier=value(c.supplierToPrepLot),amazon=value(p.prepToAmazonLot);
+ var rate=$("p_moneda")&&$("p_moneda").value==="USD"?1:value($("p_tc")&&$("p_tc").value);
+ function reference(id,total){var field=$(id);if(!field)return;field.readOnly=true;var next=total===null?"":String(Math.round(total*100)/100);if(field.value!==next)field.value=next;field.placeholder=total===null?"Completa los costos detallados":"";}
+ reference("p_cogs",displayed===null||tax===null?null:Math.max(0,displayed-(discount||0)+tax));
+ reference("p_flete",supplier===null||amazon===null||!(rate>0)?null:supplier+amazon*rate);
+ setText($("p_cogs_hint"),"Resumen automático del producto actual: precio − descuento + impuesto por unidad, desde Checkout. Modifica esos datos arriba; este resumen no agrega otro costo.");
+ setText($("p_flete_hint"),"Resumen automático del producto actual: proveedor → Prep + Prep → Amazon, total del lote en la moneda de compra. La preparación y otros gastos se muestran por separado en el desglose; no se suman otra vez aquí.");
+}
 function realCostBreakdown(){
  var s=readState(),c=s.costs&&s.costs.checkout,p=s.costs&&s.costs.prep;if(!c||!p)return null;
  var units=Math.max(0,Math.round(n("p_unid"))),currency=$("p_moneda")?$("p_moneda").value:"USD",rate=currency==="USD"?1:n("p_tc");
@@ -107,6 +119,7 @@ function syncGlobal(out){
 }
 
 function sync(){
+ syncCostReferences();
  var engine=window.MOTOR_SCORING_ENGINE,out=$("p_out");if(!out)return;if(syncGlobal(out))return;if(!engine)return;
  var fin=engine.financial||{},cap=engine.capital||{},final=engine.final||{},b=realCostBreakdown();
  var preview=window.AMAZON_PURCHASE_PREVIEW;

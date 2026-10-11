@@ -42,6 +42,9 @@ function closeLot(w,id,units,profit){
   try{
     let {w,alerts,navigations}=await mount();const originalA=clone(read(w,OPS)[0]);
     const originalFin=clone(w.MOTOR_SCORING_ENGINE.financial);
+    assert.equal(w.document.getElementById('p_cogs').value,'10');
+    assert.equal(w.document.getElementById('p_flete').value,'7');
+    assert(w.document.getElementById('p_cogs').readOnly&&w.document.getElementById('p_flete').readOnly,'cost summaries cannot become a second editable cost source');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,104);
     // Typing another ASIN must not relabel the current product when an identity field saves.
     w.document.getElementById('jev_asin').value=B;input(w,'jev_brand','TEST-A');
@@ -55,6 +58,8 @@ function closeLot(w,id,units,profit){
     assert.equal(w.document.getElementById('jev_asin').value,B);assert.equal(w.document.getElementById('jev_reserve').value,'100');
     assert.equal(w.AMAZON_CAPITAL_BALANCE().available,104);
     assert.equal(w.MOTOR_SCORING_ENGINE.financial.complete,false,'new product starts without an invented financial result');
+    assert.equal(w.document.getElementById('p_cogs').value,'','new product never displays another ASIN checkout cost');
+    assert.equal(w.document.getElementById('p_flete').value,'','new product never displays another ASIN freight');
     for(const [id,value]of Object.entries({jev_displayed:10,jev_discount:0,jev_tax:0,jev_supplier_prep:6,jev_prep_unit:1,jev_prep_other:1,jev_prep_amazon:1,jev_return_rate:0,jev_resellable:100,jev_removal:0,jev_return_prep:0,jev_resend:0,p_precio:39.99,p_ref:15,p_fba:5,p_almac:0,p_ppc:0,p_unid:1,c_venta:14,p_dias:61,jev_brand:'TEST-B'}))input(w,id,value);
     change(w,'jev_eligibility','AUTORIZADO');
     input(w,'jev_sales_month',50);
@@ -99,6 +104,19 @@ function closeLot(w,id,units,profit){
     w.Storage.prototype.setItem=function(k,v){if(k===CAT)throw new Error('quota');return set.call(this,k,v)};
     change(w,'jev_asin',A);assert.match(alerts.pop(),/No se pudo guardar/);assert.equal(read(w,KEY).product.asin,B);
     assert.deepEqual(saved(w),beforeFailure);w.Storage.prototype.setItem=set;
+    // Currency conversion only changes the reference display; it never rewrites source costs or saved lots.
+    ({w}=await mount());const lotsBeforeCurrency=clone(read(w,OPS));
+    change(w,'p_moneda','CAD');input(w,'p_tc',2);input(w,'jev_discount',2);input(w,'jev_tax',1);
+    w.JEV_FINANCIAL_SYNC.sync();
+    assert.equal(w.document.getElementById('p_cogs').value,'9','checkout reference includes discount and tax in purchase currency');
+    assert.equal(w.document.getElementById('p_flete').value,'8','USD Prep-to-Amazon freight converts before adding purchase-currency supplier freight');
+    const costsBeforeSync=clone(read(w,KEY).costs),finBeforeSync=clone(w.MOTOR_SCORING_ENGINE.financial);
+    for(let i=0;i<4;i++)w.JEV_FINANCIAL_SYNC.sync();
+    assert.deepEqual(read(w,KEY).costs,costsBeforeSync,'summaries never rewrite detailed costs');
+    assert.deepEqual(clone(w.MOTOR_SCORING_ENGINE.financial),finBeforeSync,'summaries do not add costs to the Motor Scoring calculation');
+    assert.deepEqual(read(w,OPS),lotsBeforeCurrency,'summaries do not change recorded purchases');
+    change(w,'p_moneda','USD');w.JEV_FINANCIAL_SYNC.sync();
+    assert.equal(w.document.getElementById('p_flete').value,'7');
     console.log('PASS: two distinct ASINs; independent identity/costs/market/price/quantity/ROI; shared budget/reserve; purchase/close/reload; immutable other lot; storage failure.');
   }finally{windows.forEach(w=>w.close());await new Promise(resolve=>server.close(resolve))}
 })().catch(e=>{console.error(e);process.exitCode=1});

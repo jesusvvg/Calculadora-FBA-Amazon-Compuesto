@@ -156,10 +156,11 @@ strong.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
           <div class="fbox"><input type="number" inputmode="decimal" step="0.01" id="p_tc"></div>
           <div class="hint" id="p_tchint"></div></label>
         <label class="f"><div class="flabel">Costo del producto (COGS), por unidad</div>
-          <div class="fbox"><span class="fix" id="p_cur1">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_cogs"></div></label>
+          <div class="fbox"><span class="fix" id="p_cur1">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_cogs" aria-describedby="p_cogs_hint"></div>
+          <div class="hint" id="p_cogs_hint">Precio del producto por unidad</div></label>
         <label class="f"><div class="flabel">Flete total del lote a bodega</div>
-          <div class="fbox"><span class="fix" id="p_cur2">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_flete"></div>
-          <div class="hint">El total, no por unidad</div></label>
+          <div class="fbox"><span class="fix" id="p_cur2">US$</span><input type="number" inputmode="decimal" step="0.01" id="p_flete" aria-describedby="p_flete_hint"></div>
+          <div class="hint" id="p_flete_hint">El total, no por unidad</div></label>
         <label class="f"><div class="flabel">Unidades del lote</div>
           <div class="fbox"><input type="number" inputmode="numeric" id="p_unid"></div></label>
 
