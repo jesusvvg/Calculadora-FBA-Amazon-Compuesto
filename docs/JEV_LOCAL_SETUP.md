@@ -51,6 +51,29 @@ hace llamadas a ese endpoint automáticamente en esta entrega.
    panel de producto no debe habilitarse como servicio real antes de esa prueba.
 
 No incluir claves en archivos públicos, URLs, código versionado o registros.
+
+### Primera prueba sintética desde PowerShell o terminal
+
+Con el servidor ya arrancado, usar otra terminal en la carpeta del proyecto.
+Validación local sin llamadas ni credenciales:
+
+```bash
+node scripts/jev-live-smoke.cjs
+```
+
+Tras confirmar `LOCAL_VALIDATION_OK`, ejecutar explícitamente una sola consulta
+real mediante el servidor local autenticado (consume saldo de TypeSafe):
+
+```bash
+node --env-file=server/.env scripts/jev-live-smoke.cjs --send
+```
+
+El script usa únicamente un escenario `SIMULATED`, sin ASIN real, y muestra
+modelo, respuestas validadas y tokens. Lee el token privado desde el entorno,
+no imprime secretos, no guarda operaciones y no reintenta. `enabled: true` en
+el estado local indica configuración cargada; solo una respuesta `READY` a
+esta consulta verifica la conexión real. Esta prueba real continúa pendiente.
+
 El adaptador permite un token de acceso privado únicamente en memoria. La
 configuración de la clave de TypeSafe no pertenece al navegador.
 
