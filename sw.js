@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261009-57";
+var CACHE = "fba-calc-motor-scoring-v1-20261011-jev-observer-58";
 var ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,9 @@ var ASSETS = [
   "./operations-v1.js",
   "./operations-v1.js?v=57",
   "./jev-financial-sync.js?v=57",
+  "./jev-observer-contract.js",
+  "./jev-observer-adapter.js",
+  "./jev-observer-panel.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -31,6 +34,7 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  if (new URL(e.request.url).pathname.startsWith("/api/")) return;
 
   e.respondWith(
     fetch(e.request, {cache:"no-store"}).then(function (res) {

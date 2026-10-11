@@ -2,11 +2,13 @@
 
 Fecha de revisión: 2026-10-11, America/Santiago.
 
-Estado: contrato, adaptador y servidor privado local implementados; ver
-`JEV_LOCAL_SETUP.md`. No hay conexión activa, servidor público desplegado,
-credencial real configurada ni llamada autenticada real verificada. Los archivos
-originales de la calculadora siguen intactos. No se certifican resultados del
-modelo en Amazon.
+Estado: contrato, adaptador, servidor privado y panel local implementados; ver
+`JEV_LOCAL_SETUP.md`. Jesús configuró las credenciales en su equipo Windows y
+verificó una consulta autenticada real con un escenario sintético: `READY`,
+`jev-1.13.0`, 1.950 tokens de entrada y 239 de salida. No hay servidor público
+desplegado. Los módulos de cálculo y operaciones conservan su implementación;
+la interfaz y su caché cargan el observador local. No se certifican resultados
+del modelo en Amazon.
 
 ## 1. Base confirmada
 
@@ -232,15 +234,16 @@ ESPERAR/DESCARTAR a COMPRAR. Esa política no está habilitada ahora.
    compras/cierres; historial separado y detección de resultados caducados.
 2. Implementado para prueba local: endpoint privado con secreto TypeSafe,
    autenticación, límites por proceso y validación estricta de respuesta.
-3. Pendiente: configurar credencial real y verificar llamada autenticada.
-4. Pendiente: panel JEV opcional. Los nuevos módulos aún no se cargan desde
-   `index.html` ni desde la caché de la PWA.
+3. Verificado en el equipo de Jesús: credencial privada y primera llamada
+   autenticada con datos `SIMULATED`. No implica validación comercial.
+4. Implementado: panel de JEV en la copia local, acceso solo en memoria y
+   consultas explícitas. Pendiente: revisión visual con Jesús tras actualizar.
 5. Implementado: banco sintético de integración y fallos. Pendiente: medir
    desempeño real y valor adicional de las cinco preguntas.
 
-La cuenta, credencial y entorno de servidor aún no están configurados en esta
-sesión. No pedir ni pegar la clave en el chat: configurarla como secreto del
-entorno elegido al preparar el servidor.
+La cuenta tiene saldo y las credenciales solo se configuraron en el servidor
+local del usuario. No pedir ni pegar la clave en el chat: mantenerla como
+secreto del entorno elegido al preparar el servidor.
 
 ## 10. Fuentes primarias consultadas
 

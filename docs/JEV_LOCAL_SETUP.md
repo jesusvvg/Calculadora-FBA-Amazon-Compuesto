@@ -1,22 +1,29 @@
-# JEV v0.1 · implementación local y activación pendiente
+# JEV v0.1 · conexión local verificada y panel de observación
 
 Fecha: 2026-10-11, America/Santiago.
 
 ## Estado entregado
 
-El contrato, adaptador y servidor privado están implementados y se prueban con
-un proveedor simulado. **No se ha realizado una llamada real a TypeSafe**, no
-hay credenciales reales configuradas y no se desplegó un servidor público.
+El contrato, adaptador, servidor privado y panel de observación están
+implementados. Jesús ejecutó la primera consulta real desde su equipo Windows
+el 2026-10-11: `READY`, modo `OBSERVATION`, escenario `SIMULATED`, modelo
+`jev-1.13.0`, 1.950 tokens de entrada y 239 de salida. Las credenciales permanecen
+en su archivo local privado. No se desplegó un servidor público.
 
-Los nuevos módulos no se cargan automáticamente desde `index.html` ni desde el
-service worker. Las cuatro pestañas, el Motor Scoring, las operaciones y sus
-claves de almacenamiento conservan su implementación anterior. Esta entrega
-prepara la conexión y su prueba antes de añadir el panel visible de JEV.
+`index.html` carga los módulos del observador. El panel se monta únicamente en
+localhost y consulta el estado local al abrirse, sin llamar al proveedor.
+Cada consulta pagada requiere acceso privado y pulsar el botón correspondiente.
+Las cuatro pestañas, el Motor Scoring, las operaciones y sus claves de
+almacenamiento conservan su implementación. Las observaciones se guardan en
+una clave separada; los cambios en los datos invalidan la observación visible.
+El service worker incluye los módulos y excluye `/api/` de su caché y del
+contenido de respaldo sin conexión.
 
 | Archivo | Responsabilidad |
 |---|---|
 | `jev-observer-contract.js` | Esquema permitido, cinco preguntas, puertas, faltantes y validación de respuestas |
 | `jev-observer-adapter.js` | Captura de la PWA, cálculo para lote elegido, expiración y registros separados |
+| `jev-observer-panel.js` | Acceso temporal, consulta explícita y resultados independientes en la copia local |
 | `server/jev-server.cjs` | Servidor Node privado, secreto TypeSafe, autenticación y llamada HTTP |
 | `server/.env.example` | Configuración vacía; JEV desactivado |
 | `tests/jev-observer.cjs` | Pruebas de página completa y HTTP con proveedor simulado |
@@ -34,8 +41,9 @@ tiene su propio almacenamiento. Abrirla en un origen nuevo no importa las
 compras que guardaste en otro navegador o dirección. No significa que se hayan
 borrado. No migrar ni reemplazar datos para realizar esta prueba.
 
-`GET /api/jev/status` devuelve JEV desactivado. La aplicación original tampoco
-hace llamadas a ese endpoint automáticamente en esta entrega.
+Sin cargar credenciales, `GET /api/jev/status` devuelve JEV desactivado.
+El panel hace esta comprobación gratuita al abrirse y permite repetirla
+manualmente. No llama al proveedor automáticamente.
 
 ## Configuración para una llamada real
 
@@ -43,7 +51,8 @@ hace llamadas a ese endpoint automáticamente en esta entrega.
    Verificar condiciones de la cuenta y precio al habilitarla.
 2. Copiar `server/.env.example` como `server/.env`, ignorado por Git.
 3. Configurar `TYPESAFE_API_KEY` en ese archivo privado o en secretos del servidor.
-4. Generar un secreto independiente `JEV_ACCESS_TOKEN` de al menos 32 caracteres.
+4. Generar un secreto independiente `JEV_ACCESS_TOKEN` con 32 bytes aleatorios
+   codificados como 64 caracteres hexadecimales para el panel.
    Este token protege nuestro endpoint; no es la clave del proveedor.
 5. Cambiar `JEV_ENABLED` a `1`. Mantener el enlace local en 127.0.0.1.
 6. Arrancar con `node --env-file=server/.env server/jev-server.cjs`.
@@ -72,7 +81,9 @@ El script usa únicamente un escenario `SIMULATED`, sin ASIN real, y muestra
 modelo, respuestas validadas y tokens. Lee el token privado desde el entorno,
 no imprime secretos, no guarda operaciones y no reintenta. `enabled: true` en
 el estado local indica configuración cargada; solo una respuesta `READY` a
-esta consulta verifica la conexión real. Esta prueba real continúa pendiente.
+esta consulta verifica la conexión real. La primera prueba real pasó según
+la salida compartida por Jesús; no se ejecutaron llamadas reales desde el
+entorno de desarrollo del asistente.
 
 El adaptador permite un token de acceso privado únicamente en memoria. La
 configuración de la clave de TypeSafe no pertenece al navegador.
@@ -97,11 +108,27 @@ Autorización, match, marca, origen, rentabilidad y concentración se revisan
 antes de llamar a TypeSafe. Esas condiciones reflejan los datos introducidos:
 el servidor no comprueba por sí mismo la cuenta de vendedor en Amazon.
 
-## Uso del adaptador en el próximo panel
+## Uso del panel de observación
 
-El panel deberá cargar primero `jev-observer-contract.js` y después
-`jev-observer-adapter.js`, y crear `JevObserverAdapter.browserObserver(window,
-{accessToken})` únicamente después de configurar el acceso privado.
+El panel carga primero `jev-observer-contract.js` y después
+`jev-observer-adapter.js`, y crea `JevObserverAdapter.browserObserver(window,
+{accessToken})` únicamente tras introducir el token privado.
+
+En «Análisis de producto», al final de la sección, abrir «Acceso privado a JEV».
+Pegar **JEV_ACCESS_TOKEN**, nunca la clave de TypeSafe. Puede copiarse en
+PowerShell sin imprimirlo usando:
+
+```powershell
+node --env-file=server/.env -e "process.stdout.write(process.env.JEV_ACCESS_TOKEN)" | Set-Clipboard
+```
+
+Pegar directamente en el campo del panel sin copiar otro texto antes. El campo
+se vacía al habilitar el acceso y el token se conserva solo en memoria hasta
+recargar o bloquear la página. El Motor Scoring debe admitir el piloto y deben
+existir datos suficientes antes de que se habilite «Consultar JEV».
+Se muestra el lote consultado, cinco evaluaciones o sus omisiones, confianza,
+probabilidades por opción y tokens. No existe un porcentaje de éxito comercial
+ni un promedio combinado con el Motor Scoring.
 
 - `evaluate()` ejecuta una consulta explícita y devuelve su estado.
 - `latest()` detecta que un resultado ya no corresponde al formulario actual.
@@ -155,9 +182,14 @@ Resultado verificado el 2026-10-11: las tres suites anteriores pasaron. Se
 comprobaron las puertas obligatorias, el lote elegido y sus costos, los errores
 del proveedor, la caducidad de resultados, los límites del servidor y los fallos
 de almacenamiento. Las regresiones de cierres y de múltiples ASIN también
-pasaron. Se verificó que los archivos originales de interfaz, cálculo,
-operaciones y caché no cambiaron.
+pasaron. Las pruebas del panel cubren acceso requerido, borrado del campo de
+token, una sola consulta ante clics duplicados, cinco filas de resultados,
+ocultación de resultados desactualizados y exclusión de la API de la caché.
+Los módulos originales de cálculo y operaciones no cambiaron. Se modificaron
+`index.html` para cargar el panel y `sw.js` para sus archivos y la API privada.
+La inspección visual en un navegador del entorno de desarrollo quedó pendiente
+por no disponer de un ejecutable de Chromium; se revisará en el equipo local.
 
-Próximo bloque: configuración privada de credenciales, primera llamada real,
-panel opcional y comparación de juicios en observación. La rama de respaldo
+Próximo bloque: actualizar la copia local, revisar el panel visible y comparar
+juicios en observación con datos suficientes. La rama de respaldo
 anterior a JEV permanece en el commit `e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.

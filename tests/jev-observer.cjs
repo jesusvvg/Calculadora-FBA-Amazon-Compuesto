@@ -8,7 +8,7 @@ const contract=require('../jev-observer-contract.js');
 const adapter=require('../jev-observer-adapter.js');
 const {createServer}=require('../server/jev-server.cjs');
 const clone=x=>JSON.parse(JSON.stringify(x));
-const token='synthetic-access-token-for-isolated-tests-123456789';
+const token='a'.repeat(64);
 const apiKey='synthetic-provider-key-never-sent-to-browser';
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function responseFor(request){
@@ -56,10 +56,13 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
     const dom=await JSDOM.fromURL(base,{resources:'usable',runScripts:'dangerously',virtualConsole:vc,beforeParse(window){
       window.localStorage.setItem('jev_v1',JSON.stringify(state));window.localStorage.setItem('fba_v2',JSON.stringify(inputs));
-      window.alert=()=>{};window.confirm=()=>true;window.fetch=fetch;window.AbortController=AbortController;
+      window.alert=()=>{};window.confirm=()=>true;window.fetch=(url,options)=>fetch(new URL(url,base),options);window.AbortController=AbortController;window.AbortSignal=AbortSignal;
     }});w=dom.window;await wait(1000);
     assert.deepEqual(errors,[]);assert.equal(w.MOTOR_SCORING_SELF_TEST.failed,0);
     assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'COMPRAR PILOTO');
+    assert(w.document.getElementById('jev_observer_panel'),'local page mounts the observation panel');
+    assert.equal(calls.length,0,'opening the panel never calls the paid provider');
+    assert(w.document.getElementById('jev_observer_evaluate').disabled,'private access is required');
     for(const name of ['jev-observer-contract.js','jev-observer-adapter.js'])await new Promise((resolve,reject)=>{
       const script=w.document.createElement('script');script.src=base+'/'+name;script.onload=resolve;script.onerror=reject;w.document.head.appendChild(script);
     });
@@ -134,6 +137,32 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     w.Storage.prototype.setItem=originalSet;
     assert.deepEqual(clone(w.AMAZON_CAPITAL_BALANCE()),capital);assert.deepEqual(clone(w.MOTOR_SCORING_ENGINE.final),decision);
     assert.equal(server.metrics().active,0);
+    // Exercise the actual UI with the same full-page financial fixture.
+    const get=id=>w.document.getElementById(id), panelButton=get('jev_observer_evaluate');
+    const panelStorage=clone(saved(w)),panelCapital=clone(w.AMAZON_CAPITAL_BALANCE());
+    get('jev_observer_token').value='not-a-token';get('jev_observer_unlock').click();
+    assert(panelButton.disabled);assert.equal(get('jev_observer_token').value,'');
+    get('jev_observer_token').value=token;get('jev_observer_unlock').click();
+    assert.equal(get('jev_observer_token').value,'');assert(!panelButton.disabled);
+    count=calls.length;mode='slow';panelButton.click();panelButton.click();await wait(40);
+    assert.equal(calls.length,count+1,'duplicate UI clicks send only one paid request');
+    assert(panelButton.disabled);assert(get('jev_observer_lock').disabled);slowResolve();mode='ready';await wait(80);
+    assert.match(get('jev_observer_result').textContent,/Resistencia financiera/);
+    assert.equal(get('jev_observer_result').querySelectorAll('tbody tr').length,5);
+    assert.match(get('jev_observer_result').textContent,/Tokens de entrada: 1000/);
+    assert.deepEqual(saved(w),panelStorage,'panel changes only isolated observation storage');
+    assert.deepEqual(clone(w.AMAZON_CAPITAL_BALANCE()),panelCapital);
+    assert(!JSON.stringify({...w.localStorage}).includes(token),'panel never persists the local access token');
+    get('jev_asin').value='B0OTHER1234';await wait(1100);
+    assert(panelButton.disabled);assert.match(get('jev_observer_result').textContent,/datos cambiaron/i);
+    assert.equal(get('jev_observer_result').querySelectorAll('tbody tr').length,0,'stale probabilities are removed');
+    assert.equal(calls.length,count+1,'editing the product never triggers a paid request');
+    get('jev_asin').value=state.product.asin;get('jev_observer_lock').click();
+    assert(panelButton.disabled);assert.equal(get('jev_observer_result').textContent,'');
+    // Private API GETs must bypass the service-worker cache, including offline fallback.
+    const handlers={};require('node:vm').runInNewContext(require('node:fs').readFileSync('sw.js','utf8'),
+      {self:{addEventListener:(name,callback)=>handlers[name]=callback},URL});
+    handlers.fetch({request:{method:'GET',url:base+'/api/jev/status'},respondWith:()=>assert.fail('private API response cached')});
     // Pure validators reject provider schema changes, unexpected answer IDs and confidence mismatches.
     const plan=contract.buildRequest(snapshot.state),good=responseFor(plan.request);
     const rounded=clone(good),q=rounded.answers.pilot_evidence,keys=Object.keys(q.probabilities);
@@ -151,6 +180,6 @@ async function close(server){server.closeAllConnections();await new Promise(reso
     let hits=0;const disabled=createServer({accessToken:token,fetchImpl:async()=>{hits++;}}),url=await listen(disabled);
     try{r=await fetch(url+'/api/jev/review',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:'{}'});assert.equal(r.status,503);assert.equal(hits,0);assert.equal((await (await fetch(url+'/api/jev/status')).json()).enabled,false);}
     finally{await close(disabled);}
-    console.log('PASS: full-page capture; exact chosen lot; 5 questions and missing-data abstention; mandatory gates; auth/origin/schema/limits; timeout/provider errors; stale/duplicate calls; isolated persistence; unchanged capital, operations and Scoring. No external calls.');
+    console.log('PASS: full-page capture and actual observation UI; exact chosen lot; 5 questions and missing-data abstention; mandatory gates; auth/origin/schema/limits; timeout/provider errors; stale/duplicate calls; isolated persistence; unchanged capital, operations and Scoring; no token persistence or private API caching. No external calls.');
   }finally{if(w)w.close();await close(server);}
 })().catch(error=>{console.error(error);process.exitCode=1;});
