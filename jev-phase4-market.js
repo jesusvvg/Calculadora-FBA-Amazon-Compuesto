@@ -180,17 +180,18 @@
     card.innerHTML='<div class="jev-market-head"><div><div class="cardtitle">Market Score v1 · heurístico</div><div class="jev-market-note">No es una probabilidad de éxito ni una predicción de ventas.</div></div><div><div class="jev-market-score">'+(r.score===null?'—':r.score+'/100')+'</div><div class="jev-market-band">'+r.band+' · cobertura '+Math.round(r.coverage*100)+'%</div></div></div>'+
       '<div class="jev-market-grid">'+r.components.map(function(c){return '<div class="jev-market-mini"><div class="k">'+c.k+'</div><div class="v">'+(c.o.score===null?'—':round5(c.o.score))+'</div><div class="jev-market-note">'+c.o.detail+'</div></div>'}).join("")+'</div>'+
       (r.warnings.length?r.warnings.map(function(w){return '<div class="jev-market-warn">'+w+'</div>'}).join(""):'<div class="jev-market-note">Sin alertas fuertes con los datos cargados.</div>')+
-      '<div class="jev-market-note">Fuente: MANUAL · '+checked+' · El score se redondea a bloques de 5 para evitar precisión artificial.</div>';
+      '<div class="jev-market-note">Fuente: '+(m.source||'MANUAL')+' · '+checked+' · El score se redondea a bloques de 5 para evitar precisión artificial.</div>';
     window.MOTOR_SCORING_FOLD_SCORE(card);
     window.MOTOR_SCORING_MARKET={result:r,evaluate:evaluate};
   }
 
   function loadPhase5(){if($("jev-phase5-script"))return;var s=document.createElement("script");s.id="jev-phase5-script";s.src="jev-phase5-rotation-risk.js";document.body.appendChild(s)}
+  function loadDataTools(){if($("data-tools-script"))return;var s=document.createElement("script");s.id="data-tools-script";s.src="data-tools.js?v=67";document.body.appendChild(s)}
   function init(){
     if(!$("jev_phase3"))return;
     injectStyles();buildUI();hydrate();bind();render();
     var eyebrow=document.querySelector(".eyebrow");if(eyebrow)eyebrow.textContent="CALCULADOR AMAZON COMPUESTO · MOTOR SCORING v1 · FASE 4";
-    loadPhase5();
+    loadPhase5();loadDataTools();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(init,0)});else setTimeout(init,0);
 })();
