@@ -1,0 +1,15 @@
+{
+  "name": "calculador-amazon-compuesto",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PWA local para análisis Amazon FBA/OA/RA con Motor Scoring.",
+  "scripts": {
+    "test": "node tests/run-all.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
