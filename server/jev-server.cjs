@@ -7,7 +7,7 @@ const contract = require('../jev-observer-contract.js');
 const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 const root = path.resolve(__dirname, '..');
 const PUBLIC_FILES = new Set(['index.html','manifest.json','sw.js','amazon-plan-expenses.js','jev-v1.js','jev-phase2.js','jev-phase3.js',
-  'jev-phase4-market.js','jev-phase5-rotation-risk.js','jev-phase6-engine.js','operations-v1.js','jev-financial-sync.js',
+  'jev-phase4-market.js','jev-phase5-rotation-risk.js','jev-phase6-engine.js','operations-v1.js','jev-financial-sync.js','data-tools.js',
   'jev-observer-contract.js','jev-observer-adapter.js','jev-observer-panel.js','icons/icon-192.png','icons/icon-512.png','icons/icon-512-maskable.png']);
 const digest = text => crypto.createHash('sha256').update(text).digest('hex');
 function equalSecret(actual, expected) {
