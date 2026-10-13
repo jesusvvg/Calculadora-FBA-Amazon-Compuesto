@@ -129,7 +129,7 @@
       node('p',sameLot?'El Motor Scoring permite un piloto de '+record.state.lot.selectedUnits+' unidad(es), con US$'+record.state.lot.entryCapitalUsd.toFixed(2)+' de capital de entrada.':
         'El Motor Scoring calculó un piloto distinto. La consulta de JEV corresponde al lote elegido de '+record.state.lot.selectedUnits+' unidad(es), por US$'+record.state.lot.entryCapitalUsd.toFixed(2)+'.',joint);
       if(interpretation.appMissing.length)node('p','Datos pendientes en la calculadora: '+interpretation.appMissing.map(id=>labels[id]).join(', ')+'.',joint);
-      if(interpretation.modelMissing.length)node('p','JEV evaluó pero consideró insuficiente la evidencia en: '+interpretation.modelMissing.map(id=>labels[id]).join(', ')+'.',joint);
+      if(interpretation.modelMissing.length)node('p','JEV evaluó pero consideró insuficiente la evidencia para: '+interpretation.modelMissing.map(id=>labels[id]).join(', ')+'.',joint);
       if(interpretation.cautions.length)node('p','JEV añade observaciones en: '+interpretation.cautions.map(id=>labels[id]).join(', ')+'.',joint);
       const cleanCompleted=interpretation.completed.filter(id=>!interpretation.cautions.includes(id));
       if(cleanCompleted.length)node('p','Evaluaciones completadas sin señal adicional: '+cleanCompleted.map(id=>labels[id]).join(', ')+'.',joint);
