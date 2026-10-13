@@ -3,13 +3,26 @@
   if (!['127.0.0.1', 'localhost', '[::1]'].includes(w.location.hostname)) return;
   const d = w.document, adapter = w.JevObserverAdapter, contract = w.JevObserverContract;
   const labels = {financial_resilience:'Resistencia financiera', rotation_support:'Rotación', market_pressure:'Competencia', inventory_lockup:'Inventario inmovilizado'};
-  const choices = {supported:'Con respaldo', caveat_detected:'Señal de cautela', insufficient_data:'Datos insuficientes', unsupported:'Sin respaldo', manageable:'Manejable', pressure_detected:'Presión detectada', no_material_signal:'Sin señal material', lockup_signal:'Riesgo de inmovilización'};
+  const choices = {
+    no_material_caveat:'Sin cautela material', price_history_caveat:'Cautela por precio reciente',
+    pessimistic_scenario_caveat:'Cautela por escenario pesimista', capital_exposure_caveat:'Cautela por exposición de capital',
+    combined_caveats:'Cautelas combinadas', insufficient_data:'Datos insuficientes', supported:'Con respaldo', unsupported:'Sin respaldo',
+    manageable:'Manejable', pressure_detected:'Presión detectada', no_material_signal:'Sin señal material', lockup_signal:'Riesgo de inmovilización'
+  };
   const readings = {
-    financial_resilience:{supported:'JEV considera respaldada la resistencia financiera con los datos enviados.', caveat_detected:'JEV señala una cautela financiera. La respuesta no especifica su causa.', insufficient_data:'La información enviada no basta para evaluar la resistencia financiera.'},
+    financial_resilience:{
+      no_material_caveat:'JEV no detecta una cautela financiera material adicional en los datos enviados.',
+      price_history_caveat:'JEV señala que el precio mínimo reciente reduce el colchón frente al punto de equilibrio.',
+      pessimistic_scenario_caveat:'JEV señala que el escenario pesimista debilita la resistencia financiera del piloto.',
+      capital_exposure_caveat:'JEV señala que la exposición de capital merece cautela aunque el lote siga dentro del límite duro.',
+      combined_caveats:'JEV detecta más de una cautela financiera material en los datos enviados.',
+      insufficient_data:'La información enviada no basta para clasificar la resistencia financiera.'
+    },
     rotation_support:{supported:'JEV considera respaldada la estimación de rotación con los datos enviados.', unsupported:'JEV considera que los datos enviados no respaldan la estimación de rotación.', insufficient_data:'JEV considera insuficiente la evidencia enviada para respaldar la rotación.'},
     market_pressure:{manageable:'JEV clasifica la presión competitiva como manejable con los datos enviados.', pressure_detected:'JEV detecta presión competitiva en la información enviada.', insufficient_data:'La información enviada no basta para evaluar la presión competitiva.'},
     inventory_lockup:{no_material_signal:'JEV no detecta una señal relevante de inventario inmovilizado en los datos enviados.', lockup_signal:'JEV detecta una señal de posible inmovilización del inventario.', insufficient_data:'La información enviada no basta para evaluar la inmovilización del inventario.'}
   };
+  const financialCautions = new Set(['price_history_caveat','pessimistic_scenario_caveat','capital_exposure_caveat','combined_caveats']);
   const fieldLabels = {
     'market.observationAgeDays':'Fecha de observación de mercado reciente (máximo 30 días)', 'market.priceMinRecentUsd':'Precio mínimo reciente',
     'market.bsrCurrent':'BSR actual', 'market.bsrTrend':'Tendencia BSR', 'market.salesEstimatedMonthlyListing':'Ventas mensuales estimadas del listing',
@@ -30,16 +43,24 @@
     if(i.supplierReturnAllowed==='SÍ'){if(!(i.supplierReturnWindowDays>0))missing.inventory_lockup.push('inventory.supplierReturnWindowDays');if(!present(i.supplierRestockingFeeRatio))missing.inventory_lockup.push('inventory.supplierRestockingFeeRatio');}
     return missing;
   }
+  function isCaution(id, choice) {
+    return id==='financial_resilience' ? financialCautions.has(choice) : ['unsupported','pressure_detected','lockup_signal'].includes(choice);
+  }
   function readingSummary(record) {
     const cautions=[],appMissing=[],modelMissing=[],completed=[],missing=missingInputs(record.state),answers=record.result.answers;
     for(const id of Object.keys(labels)){
       const answer=answers[id];
       if(!answer)appMissing.push(id);
       else if(answer.choice==='insufficient_data')modelMissing.push(id);
-      else {completed.push(id);if(['caveat_detected','unsupported','pressure_detected','lockup_signal'].includes(answer.choice))cautions.push(id);}
+      else {completed.push(id);if(isCaution(id,answer.choice))cautions.push(id);}
     }
     const hasMissing=appMissing.length||modelMissing.length;
     return {cautions,appMissing,modelMissing,completed,missing,title:cautions.length?(hasMissing?'Revisar piloto y completar evidencia':'Revisar piloto antes de avanzar'):hasMissing?'Completar evidencia antes de avanzar':'Piloto sin observaciones adicionales de JEV'};
+  }
+  function financialDetail(record) {
+    const answer=record.result.answers.financial_resilience;
+    if(!answer || !financialCautions.has(answer.choice))return '';
+    return readings.financial_resilience[answer.choice];
   }
   const messages = {BLOCKED:'El Motor Scoring o las condiciones del lote impiden consultar este piloto.', INSUFFICIENT_DATA:'Faltan datos para evaluar este producto.', AUTH_REQUIRED:'El servidor rechazó el acceso. Revisa el token local.', DISABLED:'JEV está desactivado en el servidor.', UNAVAILABLE:'JEV no está disponible. No se reintentó la consulta.', INVALID_RESPONSE:'La respuesta no pasó la validación. No se utiliza para decidir.', STALE:'Los datos cambiaron. Esta observación ya no corresponde al análisis actual.'};
   function node(tag, text, parent) {const e=d.createElement(tag);if(text!==undefined)e.textContent=text;if(parent)parent.appendChild(e);return e;}
@@ -78,12 +99,13 @@
       if(interpretation.appMissing.length)node('p','Datos pendientes en la calculadora: '+interpretation.appMissing.map(id=>labels[id]).join(', ')+'.',joint);
       if(interpretation.modelMissing.length)node('p','JEV evaluó pero consideró insuficiente la evidencia en: '+interpretation.modelMissing.map(id=>labels[id]).join(', ')+'.',joint);
       if(interpretation.cautions.length)node('p','JEV añade observaciones en: '+interpretation.cautions.map(id=>labels[id]).join(', ')+'.',joint);
+      const financeNote=financialDetail(record);if(financeNote)node('p','Detalle financiero: '+financeNote,joint);
       const cleanCompleted=interpretation.completed.filter(id=>!interpretation.cautions.includes(id));if(cleanCompleted.length)node('p','Evaluaciones completadas sin señal adicional: '+cleanCompleted.map(id=>labels[id]).join(', ')+'.',joint);
-      if(interpretation.cautions.length&&!interpretation.appMissing.length&&!interpretation.modelMissing.length)node('p','Conclusión conjunta: el piloto no queda descartado por JEV, pero debe revisarse '+interpretation.cautions.map(id=>labels[id].toLowerCase()).join(', ')+' antes de avanzar.',joint);
+      if(interpretation.cautions.length&&!interpretation.appMissing.length&&!interpretation.modelMissing.length)node('p','Conclusión conjunta: el piloto no queda descartado por JEV, pero deben revisarse las observaciones anteriores antes de avanzar.',joint);
       else if(interpretation.appMissing.length||interpretation.modelMissing.length)node('p','Conclusión conjunta: faltan datos o evidencia suficiente antes de cerrar la revisión del piloto.',joint);
       else node('p','Conclusión conjunta: las cuatro evaluaciones de JEV no añaden objeciones al piloto calculado. Esto no autoriza la compra ni garantiza resultados.',joint);
       node('p',record.state.dataOrigin==='SIMULATED'?'Resultado de prueba: los datos son ficticios y no validan un producto real.':'Las clasificaciones se basan en los datos enviados; JEV no comprobó su veracidad en Amazon.',joint).className='jev-observer-note';
-      node('p','La conclusión del piloto se construye localmente a partir de las cuatro evaluaciones de JEV y del Motor Scoring. No existe una quinta consulta pagada de “evidencia para el piloto”. Si JEV responde “Datos insuficientes”, no se inventa una causa. No se mezclan puntajes ni se autoriza una compra automáticamente.',joint).className='jev-observer-note';
+      node('p','La conclusión del piloto se construye localmente a partir de las cuatro evaluaciones de JEV y del Motor Scoring. No existe una quinta consulta pagada de “evidencia para el piloto”. Las cautelas financieras se muestran por categoría para evitar explicaciones inventadas. No se mezclan puntajes ni se autoriza una compra automáticamente.',joint).className='jev-observer-note';
       motorDetails=node('details');motorDetails.id='jev_observer_motor_detail';motorDetails.className='jev-details';node('summary','Ver evaluación y cálculo del Motor Scoring',motorDetails);motor.parentNode.insertBefore(motorDetails,motor);motorDetails.appendChild(motor);
     }
     function draw(record){
