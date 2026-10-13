@@ -1,0 +1,303 @@
+# JEV v0.1 · conexión local verificada y panel de observación
+
+Fecha: 2026-10-11, America/Santiago.
+
+## Estado entregado
+
+El contrato, adaptador, servidor privado y panel de observación están
+implementados. Jesús ejecutó la primera consulta real desde su equipo Windows
+el 2026-10-11: `READY`, modo `OBSERVATION`, escenario `SIMULATED`, modelo
+`jev-1.13.0`, 1.950 tokens de entrada y 239 de salida. Las credenciales permanecen
+en su archivo local privado. No se desplegó un servidor público.
+
+`index.html` carga los módulos del observador. El panel se monta únicamente en
+localhost y consulta el estado local al abrirse, sin llamar al proveedor.
+Cada consulta pagada requiere acceso privado y pulsar el botón correspondiente.
+Las cuatro pestañas, el Motor Scoring, las operaciones y sus claves de
+almacenamiento conservan su implementación. Las observaciones se guardan en
+una clave separada; los cambios en los datos invalidan la observación visible.
+El service worker incluye los módulos y excluye `/api/` de su caché y del
+contenido de respaldo sin conexión.
+
+| Archivo | Responsabilidad |
+|---|---|
+| `jev-observer-contract.js` | Esquema permitido, cinco preguntas, puertas, faltantes y validación de respuestas |
+| `jev-observer-adapter.js` | Captura de la PWA, cálculo para lote elegido, expiración y registros separados |
+| `jev-observer-panel.js` | Acceso temporal, consulta explícita y resultados independientes en la copia local |
+| `server/jev-server.cjs` | Servidor Node privado, secreto TypeSafe, autenticación y llamada HTTP |
+| `server/.env.example` | Configuración vacía; JEV desactivado |
+| `tests/jev-observer.cjs` | Pruebas de página completa y HTTP con proveedor simulado |
+
+## Arranque local sin credenciales
+
+Requiere Node.js 22 o posterior, sin dependencias de producción.
+
+```bash
+node server/jev-server.cjs
+```
+
+Abrir `http://127.0.0.1:8787`. La calculadora puede usarse allí, pero ese origen
+tiene su propio almacenamiento. Abrirla en un origen nuevo no importa las
+compras que guardaste en otro navegador o dirección. No significa que se hayan
+borrado. No migrar ni reemplazar datos para realizar esta prueba.
+
+Sin cargar credenciales, `GET /api/jev/status` devuelve JEV desactivado.
+El panel hace esta comprobación gratuita al abrirse y permite repetirla
+manualmente. No llama al proveedor automáticamente.
+
+## Configuración para una llamada real
+
+1. Obtener acceso y clave desde la consola oficial `https://console.typesafe.ai/`.
+   Verificar condiciones de la cuenta y precio al habilitarla.
+2. Copiar `server/.env.example` como `server/.env`, ignorado por Git.
+3. Configurar `TYPESAFE_API_KEY` en ese archivo privado o en secretos del servidor.
+4. Generar un secreto independiente `JEV_ACCESS_TOKEN` con 32 bytes aleatorios
+   codificados como 64 caracteres hexadecimales para el panel.
+   Este token protege nuestro endpoint; no es la clave del proveedor.
+5. Cambiar `JEV_ENABLED` a `1`. Mantener el enlace local en 127.0.0.1.
+6. Arrancar con `node --env-file=server/.env server/jev-server.cjs`.
+7. Ejecutar primero una evaluación sintética y comprobar su respuesta. El
+   panel de producto no debe habilitarse como servicio real antes de esa prueba.
+
+No incluir claves en archivos públicos, URLs, código versionado o registros.
+
+### Primera prueba sintética desde PowerShell o terminal
+
+Con el servidor ya arrancado, usar otra terminal en la carpeta del proyecto.
+Validación local sin llamadas ni credenciales:
+
+```bash
+node scripts/jev-live-smoke.cjs
+```
+
+Tras confirmar `LOCAL_VALIDATION_OK`, ejecutar explícitamente una sola consulta
+real mediante el servidor local autenticado (consume saldo de TypeSafe):
+
+```bash
+node --env-file=server/.env scripts/jev-live-smoke.cjs --send
+```
+
+El script usa únicamente un escenario `SIMULATED`, sin ASIN real, y muestra
+modelo, respuestas validadas y tokens. Lee el token privado desde el entorno,
+no imprime secretos, no guarda operaciones y no reintenta. `enabled: true` en
+el estado local indica configuración cargada; solo una respuesta `READY` a
+esta consulta verifica la conexión real. La primera prueba real pasó según
+la salida compartida por Jesús; no se ejecutaron llamadas reales desde el
+entorno de desarrollo del asistente.
+
+El adaptador permite un token de acceso privado únicamente en memoria. La
+configuración de la clave de TypeSafe no pertenece al navegador.
+
+## API privada implementada
+
+```text
+POST /api/jev/review
+Authorization: Bearer <JEV_ACCESS_TOKEN>
+Content-Type: application/json
+```
+
+El cuerpo contiene únicamente `analysisId` y `state`, según el esquema del
+contrato. No acepta preguntas, modelo, URL de proveedor ni campos arbitrarios
+enviados por el navegador. El servidor reconstruye las cinco preguntas fijas.
+
+Una respuesta válida incluye `mode: OBSERVATION`, versión del contrato,
+identificador de análisis, SHA-256 del estado normalizado, evaluaciones
+omitidas, resultado validado y latencia. Nunca devuelve la clave del proveedor.
+
+Autorización, match, marca, origen, rentabilidad y concentración se revisan
+antes de llamar a TypeSafe. Esas condiciones reflejan los datos introducidos:
+el servidor no comprueba por sí mismo la cuenta de vendedor en Amazon.
+
+## Uso del panel de observación
+
+El panel carga primero `jev-observer-contract.js` y después
+`jev-observer-adapter.js`, y crea `JevObserverAdapter.browserObserver(window,
+{accessToken})` únicamente tras introducir el token privado.
+
+En «Análisis de producto», al final de la sección, abrir «Acceso privado a JEV».
+Pegar **JEV_ACCESS_TOKEN**, nunca la clave de TypeSafe. Puede copiarse en
+PowerShell sin imprimirlo usando:
+
+```powershell
+node --env-file=server/.env -e "process.stdout.write(process.env.JEV_ACCESS_TOKEN)" | Set-Clipboard
+```
+
+Pegar directamente en el campo del panel sin copiar otro texto antes. El campo
+se vacía al habilitar el acceso y el token se conserva solo en memoria hasta
+recargar o bloquear la página. El Motor Scoring debe admitir el piloto y deben
+existir datos suficientes antes de que se habilite «Consultar JEV».
+Se muestra el lote consultado, cinco evaluaciones o sus omisiones, confianza,
+probabilidades por opción y tokens. No existe un porcentaje de éxito comercial
+ni un promedio combinado con el Motor Scoring.
+
+Para datos ficticios, marcar «Escenario de prueba · datos ficticios para JEV».
+El envío y su registro quedan etiquetados `SIMULATED`; cambiar esta opción
+invalida una observación anterior. La opción se reinicia al recargar la página.
+Las etiquetas de registro de compras y análisis atribuyen las predicciones
+internas al Motor Scoring; no cambian cálculos ni claves de almacenamiento.
+
+- `evaluate()` ejecuta una consulta explícita y devuelve su estado.
+- `latest()` detecta que un resultado ya no corresponde al formulario actual.
+- Una segunda llamada mientras hay una en curso devuelve `PENDING`.
+- Un cambio de ASIN, cantidad, costo, precio o capital invalida el uso del
+  resultado; la observación conserva la identidad original.
+- Si la compra usa cantidad o inversión distintas de la recomendación, el
+  registro marca `recommendationAppliesToChosenLot: false`. No debe mostrarse
+  concordancia de decisiones sobre lotes diferentes.
+- Los registros se guardan en `amazon_compuesto_jev_observations_v01`, con los
+  últimos 100 resultados. No modifica ninguna clave de compras o de capital.
+- Si falla ese guardado, se devuelve `saved: false` sin tocar las operaciones.
+- Los juicios sin mínimos de datos o con mercado de antigüedad desconocida o
+  superior a 30 días se omiten. Esa ventana es una política inicial de uso de
+  datos; no garantiza actualidad suficiente para todos los productos.
+
+## Límites de esta implementación
+
+- Seis intentos por minuto, cien por día y dos consultas concurrentes por
+  proceso. Se cuentan intentos antes de la llamada, incluso si el proveedor
+  falla. No hay reintentos automáticos.
+- Cuerpo de entrada limitado a 16 KiB y respuesta del proveedor a 64 KiB.
+- Diez segundos de timeout del proveedor; doce segundos en el cliente.
+- Solo el endpoint oficial y el modelo `jev-1.13.0`; redirecciones rechazadas.
+- Host y origen verificados. No hay CORS abierto. Los archivos del servidor,
+  configuración y documentos privados no se sirven como contenido público.
+- Los límites y métricas viven en memoria. Se reinician al reiniciar el
+  proceso y no coordinan múltiples instancias. **Este servidor es para prueba
+  privada local; no se entrega como despliegue público listo.**
+- Para producción: persistir cuotas, gestionar sesiones de usuario, usar HTTPS
+  y revisar el proxy bajo el mismo origen. No publicar este proceso aislado
+  como un endpoint abierto ni sustituir autenticación por CORS.
+- Los resultados muestran categoría, probabilidad y confianza separadas.
+  Ningún resultado permite comprar, reponer, escalar o liberar capital.
+
+## Validación
+
+Las pruebas requieren `jsdom` como dependencia de desarrollo. Puede instalarse
+en un directorio de pruebas separado y usar `NODE_PATH`.
+
+```bash
+node tests/jev-observer.cjs
+node tests/operation-close.cjs
+node tests/multiple-asins.cjs
+```
+
+Las pruebas usan almacenamiento sintético y HTTP local. Simulan TypeSafe para
+comprobar integración y fallos; no miden su precisión ni rentabilidad comercial.
+
+Resultado verificado el 2026-10-11: las tres suites anteriores pasaron. Se
+comprobaron las puertas obligatorias, el lote elegido y sus costos, los errores
+del proveedor, la caducidad de resultados, los límites del servidor y los fallos
+de almacenamiento. Las regresiones de cierres y de múltiples ASIN también
+pasaron. Las pruebas del panel cubren acceso requerido, borrado del campo de
+token, una sola consulta ante clics duplicados, cinco filas de resultados,
+ocultación de resultados desactualizados y exclusión de la API de la caché.
+Los cálculos y el comportamiento de operaciones no cambiaron; se corrigieron
+sus etiquetas para distinguir el Motor Scoring del JEV externo. Se modificaron
+`index.html` para cargar el panel y `sw.js` para sus archivos y la API privada.
+La inspección visual se realizó mediante capturas del navegador del usuario.
+No se dispuso de un ejecutable de Chromium en el entorno de desarrollo.
+
+### Consulta manual desde el panel verificada
+
+El 2026-10-11, a las 16:54 de America/Santiago, el usuario consultó una vez
+desde el panel local con «Escenario de prueba · datos ficticios para JEV»
+marcado. El ASIN inventado `B0TESTJEV0` identificó localmente un lote de una
+unidad y US$19 de entrada, sin registrar una compra. Motor Scoring mostró
+COMPRAR PILOTO, US$9,91 de ganancia estimada y US$181 disponibles tras el lote.
+Los valores visibles incluyen los costos que estaban configurados en esa
+copia local; no deben confundirse con resultados realizados.
+
+JEV respondió con el modelo `jev-1.13.0`, 1968 tokens de entrada y 239 de
+salida. El panel indicó explícitamente «Datos: escenario ficticio».
+
+| Evaluación | Distribución de clasificaciones | Confianza |
+|---|---|---:|
+| Resistencia financiera | Con respaldo 32%; cautela 59%; datos insuficientes 9% | 0.38 |
+| Rotación | Con respaldo 27%; sin respaldo 7%; datos insuficientes 66% | 0.49 |
+| Competencia | Manejable 100%; presión 0%; datos insuficientes 0% | 1.00 |
+| Inventario inmovilizado | Sin señal material 78%; riesgo 9%; datos insuficientes 13% | 0.67 |
+| Evidencia para el piloto | Con respaldo para revisión 7%; sin respaldo 9%; datos insuficientes 84% | 0.76 |
+
+Al cambiar el precio de US$39,99 a US$38,99, el usuario confirmó que las filas
+de resultados desaparecieron y el panel mostró que la observación ya no
+correspondía al análisis actual. No se solicitó otra consulta. Se corrigió
+la repetición visual de ese aviso, conservándolo una sola vez en el estado
+del panel.
+
+Esta validación confirma la conexión y el flujo de observación. No mide la
+precisión comercial de JEV ni valida demanda, elegibilidad o un producto real.
+«Datos insuficientes» es una clasificación del modelo; la respuesta no
+incluye una explicación ni identifica por sí misma campos faltantes.
+
+Próximo bloque: contrastar el flujo con evidencia verificable de un producto
+real. El Motor Scoring utiliza el desglose de Costo real y Prep Center. El resumen de
+resultados reales se conserva y aparece al existir operaciones cerradas; los
+registros de la aplicación habitual no se trasladan automáticamente al origen
+local. La rama de respaldo anterior a JEV permanece en el commit
+`e2f96b15b1605d3a0f83fa539a98ef0b122531fc`.
+
+### Resumen automático de COGS y fletes
+
+Los dos campos heredados se conservan como referencias de solo lectura del
+producto actual. COGS muestra precio menos descuento más impuesto por unidad,
+desde Checkout. Flete muestra proveedor → Prep más Prep → Amazon, total del
+lote en la moneda de compra; el tramo Prep → Amazon, introducido en USD, se
+convierte antes de sumar. La preparación y otros gastos siguen separados en
+el desglose y no se incluyen en este resumen de fletes. Si faltan datos, la
+referencia queda vacía. Estos campos no sobrescriben los costos detallados,
+el cálculo del Motor Scoring ni operaciones guardadas.
+
+Para el escenario ficticio de esta sesión, las referencias son US$10 por
+unidad y US$7 de fletes por lote. Los US$19 de inversión incluyen además
+US$1 de preparación y US$1 de otros gastos. Pruebas aisladas verifican cambio
+de ASIN sin arrastrar importes, descuento/impuesto, conversión CAD/USD y
+conservación de compras y resultados.
+
+Jesús confirmó visualmente el resumen tras cerrar una operación ficticia:
+facturación US$39,99, costos US$30,08, ganancia US$9,91, capital actualizado
+US$309,91 y disponible US$209,91 con reserva US$100. La captura de la operación
+muestra devoluciones 0. No son ventas reales ni una medición de precisión comercial.
+
+### Lectura conjunta en lenguaje claro
+
+Las seis tarjetas Market, Rotation, Risk, Financial, Capital Efficiency y
+Data Confidence son desplegables, cerradas al cargar la página. El encabezado
+conserva puntuación y clasificación; los componentes y advertencias quedan
+dentro. Cambiar datos actualiza las cifras sin cerrar el detalle abierto. La
+decisión principal permanece visible. El panel local de JEV se sitúa justo
+debajo del bloque «Registrar compra», como hermano de ese bloque dentro de
+la misma columna de la decisión. Así conserva el mismo ancho y no queda
+desplazado al final de los campos de la columna izquierda. Al actualizar el
+formulario de compra se conserva el panel y su acceso en memoria; en
+pantallas pequeñas ambos ocupan todo el ancho disponible.
+
+A petición de Jesús, la interfaz reúne el piloto del Motor Scoring y las
+clasificaciones de JEV en una tarjeta «Lectura conjunta · Motor Scoring + JEV»
+en el lugar de la decisión principal. La evaluación financiera original
+permanece disponible en «Ver evaluación y cálculo del Motor Scoring».
+
+| Señales de JEV con un piloto admitido por Motor Scoring | Lectura conjunta |
+|---|---|
+| Las cinco clasificaciones son favorables | Piloto sin observaciones adicionales de JEV |
+| Hay cautela, falta de respaldo o señal de presión/inmovilización | Piloto con observaciones |
+| Hay alguna evaluación omitida o clasificada como datos insuficientes | Completar evidencia antes de avanzar |
+| Hay observaciones y evidencia insuficiente | Revisar piloto y completar evidencia |
+| El lote elegido difiere del piloto calculado por Motor Scoring | Revisar lote distinto al piloto calculado |
+
+Este texto es un resumen de reglas y categorías, no una explicación generada
+por JEV. No inventa el motivo concreto de una cautela ni una lista exacta de
+campos que corregir. El escenario ficticio conserva su advertencia visible.
+No se promedian puntajes y probabilidades, ni se usan umbrales de confianza
+sin validar para fabricar una probabilidad de éxito comercial.
+
+Las cinco filas de JEV incluyen una explicación breve de lo que significa la
+categoría. Sus probabilidades y confianza permanecen dentro de «Ver
+probabilidades y confianza», sin una columna numérica en la lectura principal.
+Cuando cambian los datos, se retira también la conclusión conjunta y se
+restaura la tarjeta original del Motor Scoring. Al bloquear el acceso se
+retira la lectura conjunta de la sesión.
+
+La suite del observador comprueba los casos favorables, de evidencia
+insuficiente y de cautela junto a evidencia insuficiente; verifica el texto,
+la conservación de cálculos/capital y el retiro de una lectura desactualizada.
+Estas comprobaciones usan respuestas simuladas y no consumen saldo TypeSafe.
