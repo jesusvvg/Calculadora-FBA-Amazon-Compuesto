@@ -26,7 +26,7 @@
     st.textContent=
       ".jev-phase3-summary{margin:0 0 14px;padding-bottom:8px}"+
       ".jev-phase3-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}"+
-      ".jev-phase3-metric{border:1px solid var(--line);padding:9px 10px;background:#fff}"+
+      ".jev-phase3-metric{border:1px solid var(--line);padding:9px 10px;background:var(--panel)}"+
       ".jev-phase3-metric .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}"+
       ".jev-phase3-metric .v{font-family:var(--mono);font-size:17px;margin-top:3px}"+
       ".jev-phase3-warning{font-size:11.5px;line-height:1.5;padding:8px 10px;margin-top:6px;background:var(--warnBg);border-left:3px solid var(--warn)}"+

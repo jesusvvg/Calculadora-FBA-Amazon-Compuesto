@@ -1,0 +1,34 @@
+name: Pruebas de regresión
+
+# Solo en pull requests: nada se ejecuta con secretos ni publica artefactos.
+on:
+  pull_request:
+    branches: [feature/jev-v1, main]
+
+permissions:
+  contents: read
+
+jobs:
+  npm-test:
+    name: npm test / ${{ matrix.os }} (datos ficticios, sin servicios externos)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Identidad git para las pruebas del lanzador
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@example.invalid"
+      - name: Dependencias de prueba
+        run: npm install --no-audit --no-fund
+      - name: Sintaxis de los módulos
+        run: node --check scanner-bridge.js && node --check fba-verification.js && node --check data-tools.js && node --check jev-phase6-engine.js
+      - name: Suite completa
+        run: npm test

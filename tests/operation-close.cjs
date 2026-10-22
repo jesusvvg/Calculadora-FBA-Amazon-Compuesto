@@ -284,6 +284,10 @@ function checkTabs(w){
     w.close();({w}=await mount(userCase));
     const analysisState=JSON.parse(w.localStorage.getItem('jev_v1'));
     analysisState.eligibility={status:'AUTORIZADO'};
+    // FBA obligatorio (regla 2026-10-22): verificación vigente ligada al producto analizado.
+    // Sin ASIN no hay verificación FBA posible: el análisis identifica su producto.
+    analysisState.product=Object.assign({},analysisState.product,{asin:(analysisState.product&&analysisState.product.asin)||'B0TESTCLOS1'});
+    analysisState.fulfillment={status:'FBA_ELIGIBLE',asin:String(analysisState.product&&analysisState.product.asin||'').toUpperCase(),marketplace:(analysisState.product&&analysisState.product.marketplace)||'US',condition:(analysisState.product&&analysisState.product.condition)||'NEW',channel:'FBA',source:'MANUAL',checkedAt:new Date().toISOString(),validUntil:new Date(Date.now()+72*3600e3).toISOString()};
     analysisState.verification={productMatch:{status:'MATCH CONFIRMADO'},brandPolicy:{status:'AUTORIZACIÓN EXPLÍCITA'},supply:{authenticity:'VERIFICADA'},exitPlan:{returnAllowed:'SÍ',finalSale:'NO'}};
     analysisState.returns={returnRateExpected:0,resellablePct:100,removalCostUnit:0,prepReturnCostUnit:0,resendCostUnit:0};
     analysisState.market={checkedAt:new Date().toISOString()};

@@ -63,3 +63,5 @@ El puente sigue siendo por archivo JSON. Scanner y Calculador continúan desacop
 - Conversión de `amazonSeller = SÍ` en `DESCARTAR`.
 
 Esas decisiones requieren validación comercial y no pertenecen a este puente mínimo.
+
+> **Nota (2026-10-22):** el formato vigente es el **JSON v2.3** del Scanner (ver `SCANNER_IMPORT_CONTRACT_V23.md`). El v1 se sigue leyendo, pero ahora pasa por la vista previa y entra como candidato: ya no reemplaza el producto activo ni fija fechas de verificación.

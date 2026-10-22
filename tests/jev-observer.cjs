@@ -50,6 +50,8 @@ async function close(server){server.closeAllConnections();await new Promise(reso
   const base=await listen(server);let w;
   const state={product:{asin:'B0TESTJEV004',brand:'PRIVATE',marketplace:'US',condition:'NEW',stage:'CANDIDATO'},
     eligibility:{status:'AUTORIZADO',checkedAt:new Date().toISOString()},
+    // FBA obligatorio (regla 2026-10-22): verificación vigente y ligada al mismo ASIN/marketplace/condición.
+    fulfillment:{status:'FBA_ELIGIBLE',asin:'B0TESTJEV004',marketplace:'US',condition:'NEW',channel:'FBA',source:'MANUAL',checkedAt:new Date().toISOString(),validUntil:new Date(Date.now()+72*3600e3).toISOString()},
     verification:{productMatch:{status:'MATCH CONFIRMADO'},brandPolicy:{status:'AUTORIZACIÓN EXPLÍCITA'},supply:{authenticity:'VERIFICADA',supplierName:'PRIVATE'},
       exitPlan:{returnAllowed:'SÍ',returnWindowDays:30,restockingFeePct:0,returnShippingPaidBy:'PROVEEDOR',finalSale:'NO'}},
     costs:{checkout:{displayedUnit:10,discountUnit:0,taxUnit:0,supplierToPrepLot:6},prep:{prepUnit:1,otherPrepLot:1,prepToAmazonLot:1}},
