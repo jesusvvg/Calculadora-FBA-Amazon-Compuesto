@@ -186,7 +186,7 @@
   }
 
   function loadPhase5(){if($("jev-phase5-script"))return;var s=document.createElement("script");s.id="jev-phase5-script";s.src="jev-phase5-rotation-risk.js";document.body.appendChild(s)}
-  function loadDataTools(){if($("data-tools-script"))return;var s=document.createElement("script");s.id="data-tools-script";s.src="data-tools.js?v=67";document.body.appendChild(s)}
+  function loadDataTools(){if($("data-tools-script"))return;var s=document.createElement("script");s.id="data-tools-script";s.src="data-tools.js?v=68";document.body.appendChild(s)}
   function init(){
     if(!$("jev_phase3"))return;
     injectStyles();buildUI();hydrate();bind();render();

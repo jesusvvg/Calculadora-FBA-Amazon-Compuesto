@@ -228,13 +228,14 @@
       summary.innerHTML = '<strong>'+status+'</strong> · '+info.summary;
     }
     if(gate){
-      var checked = state.eligibility.checkedAt ? new Date(state.eligibility.checkedAt).toLocaleString("es-CL") : "sin verificar";
+      var checked = state.eligibility.checkedAt ? new Date(state.eligibility.checkedAt).toLocaleString("es-CL") : (state.eligibility.evidenceAt ? "según exportación del " + new Date(state.eligibility.evidenceAt).toLocaleString("es-CL") + " (revalidar)" : "sin verificar");
+      var source = String(state.eligibility.source || "MANUAL").replace(/[<>&"']/g, "");
       gate.innerHTML =
         '<div class="verdict '+info.tone+'">'+
           '<div class="l">Puerta obligatoria · Elegibilidad Amazon</div>'+
           '<div class="v">'+info.decision+'</div>'+
           '<div class="jev-sub">'+info.detail+'</div>'+
-          '<div class="jev-meta">Estado: '+status+' · Fuente: MANUAL · '+checked+'</div>'+
+          '<div class="jev-meta">Estado: '+status+' · Fuente: '+source+' · '+checked+'</div>'+
         '</div>'+
         (status === "AUTORIZADO" ? "" : '<div class="jev-disabled-note">El análisis financiero puede consultarse, pero no habilita una compra mientras esta puerta esté bloqueada.</div>');
     }
