@@ -44,7 +44,7 @@
       ".jev-market-score{font-family:var(--mono);font-size:23px;line-height:1}"+
       ".jev-market-band{font-size:11px;color:var(--muted);margin-top:4px;text-align:right}"+
       ".jev-market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}"+
-      ".jev-market-mini{border:1px solid var(--line);padding:8px 9px;background:#fff}"+
+      ".jev-market-mini{border:1px solid var(--line);padding:8px 9px;background:var(--panel)}"+
       ".jev-market-mini .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}"+
       ".jev-market-mini .v{font-family:var(--mono);font-size:14px;margin-top:2px}"+
       ".jev-market-warn{font-size:11.5px;line-height:1.5;margin-top:7px;padding:7px 9px;background:var(--warnBg);border-left:3px solid var(--warn)}"+
