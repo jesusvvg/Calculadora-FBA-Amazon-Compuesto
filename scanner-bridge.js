@@ -18,6 +18,9 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
+  // La regla FBA vive en fba-verification.js (una sola puerta para productos manuales, Scanner o Nepeto).
+  var FV = (typeof module === "object" && module.exports) ? require("./fba-verification.js")
+    : (typeof self !== "undefined" ? self.FBA_VERIFICATION : null);
   var SCHEMA_V23 = "2.3", LEGACY_SCHEMA = "amazon-sourcing-scanner-prospect-v1";
   var GENERATOR = "Amazon Sourcing Scanner";
   var CATALOG_KEY = "motor_scoring_asin_v1", ACTIVE_KEY = "jev_v1", INPUTS_KEY = "fba_v2";
@@ -27,7 +30,7 @@
 
   var LISTING = { AUTHORIZED: "AUTORIZADO", REQUIRES_APPROVAL: "REQUIERE APROBACIÓN", NOT_AUTHORIZED: "NO AUTORIZADO" };
   var FBA = { FBA_ELIGIBLE: 1, FBA_RESTRICTED: 1, HAZMAT_REVIEW: 1, NOT_VERIFIED: 1 };
-  var FBA_LABEL = { FBA_ELIGIBLE: "FBA ELEGIBLE", FBA_RESTRICTED: "FBA RESTRINGIDO", HAZMAT_REVIEW: "REVISIÓN HAZMAT", NOT_VERIFIED: "FBA NO VERIFICADO" };
+  var FBA_LABEL = { FBA_ELIGIBLE: "FBA AUTORIZADO", FBA_RESTRICTED: "FBA NO AUTORIZADO", HAZMAT_REVIEW: "FBA EN REVISIÓN (HAZMAT)", NOT_VERIFIED: "FBA NO VERIFICADO" };
   var V23_FIELDS = ["asin", "gtin", "source", "condition", "source_price", "source_regular_price", "shipping_cost", "source_tax",
     "source_tax_status", "source_acquisition_cost", "amazon_price", "bsr_current", "match_status", "match_confidence", "match_method",
     "listing_eligibility", "fulfillment_eligibility", "historical_data_status", "historical_source", "conservative_price",
@@ -218,11 +221,19 @@
       sourceTrustLevel: d.sourceTrustLevel, riskFlags: d.riskFlags, opportunityStatus: d.opportunityStatus, statusReason: d.statusReason };
   }
   // Evidencia externa = lo que el Scanner afirma. Se puede refrescar sin tocar el análisis manual.
-  function applyEvidence(state, d, kind, importedAt) {
+  function applyEvidence(state, d, kind, importedAt, marketplace) {
     state.scanner = evidenceFrom(d, kind);
     state.scanner.importedAt = importedAt;
-    state.fulfillment = { status: d.fbaStatus, label: FBA_LABEL[d.fbaStatus], source: "SCANNER", checkedAt: null,
-      evidenceAt: d.exportedAt, validUntil: d.expiresAt };
+    // Verificación FBA ligada al ASIN, marketplace, condición y modalidad que verificó el Scanner.
+    // checkedAt queda null (el archivo no trae la hora del chequeo); vale hasta expires_at.
+    var prevF = state.fulfillment || {};
+    // Una verificación manual MÁS RECIENTE que la exportación del Scanner manda: no se pisa.
+    var manualNewer = prevF.source === "MANUAL" && prevF.checkedAt && d.exportedAt && Date.parse(prevF.checkedAt) > Date.parse(d.exportedAt);
+    if (!manualNewer) {
+      state.fulfillment = { status: d.fbaStatus, label: FV ? FV.label(d.fbaStatus) : FBA_LABEL[d.fbaStatus], asin: d.asin,
+        marketplace: marketplace || d.marketplace || null, condition: "NEW", channel: "FBA", source: "SCANNER", checkedAt: null,
+        evidenceAt: d.exportedAt, validUntil: d.expiresAt };
+    }
     // El permiso para publicar solo se actualiza si nadie lo fijó a mano.
     var e = state.eligibility || {};
     if (!e.source || e.source === "SCANNER" || (e.status === "NO VERIFICADO" && !e.checkedAt)) {
@@ -237,7 +248,7 @@
       eligibility: {}, financial: {}, market: { amazonSeller: "NO VERIFICADO", source: "SCANNER", checkedAt: d.lastChecked },
       risk: {}, rotation: {}, capitalEfficiency: {}, dataConfidence: {}, decision: {} };
     if (d.bsrCurrent !== null) state.market.bsrCurrent = d.bsrCurrent;
-    applyEvidence(state, d, kind, importedAt);
+    applyEvidence(state, d, kind, importedAt, marketplace);
     var inputs = Object.assign({}, defaults || {});
     inputs.p_precio = ""; inputs.p_cogs = ""; inputs.p_flete = ""; inputs.p_unid = "1";
     GLOBAL_INPUTS.forEach(function (k) { if (currentInputs && currentInputs[k] !== undefined) inputs[k] = currentInputs[k]; });
@@ -269,14 +280,14 @@
       if (!marketplace) { results.push({ asin: r.asin, action: "RECHAZADO", reason: "Marketplace sin confirmar" }); return; }
       if (r.asin === activeAsin) {
         if (active.scanner && active.scanner.exportedAt && active.scanner.exportedAt === d.exportedAt) { results.push({ asin: r.asin, action: "SIN CAMBIOS", reason: "Mismo archivo ya importado" }); return; }
-        applyEvidence(active, d, parsed.kind, importedAt); activeChanged = true;
+        applyEvidence(active, d, parsed.kind, importedAt, marketplace); activeChanged = true;
         results.push({ asin: r.asin, action: "EVIDENCIA ACTUALIZADA", reason: "Producto activo: se conserva tu análisis; solo cambia la evidencia del Scanner" });
         return;
       }
       var rec = catalog[r.asin];
       if (isObj(rec) && isObj(rec.state)) {
         if (rec.state.scanner && rec.state.scanner.exportedAt && rec.state.scanner.exportedAt === d.exportedAt) { results.push({ asin: r.asin, action: "SIN CAMBIOS", reason: "Mismo archivo ya importado" }); return; }
-        applyEvidence(rec.state, d, parsed.kind, importedAt); rec.updatedAt = importedAt;
+        applyEvidence(rec.state, d, parsed.kind, importedAt, marketplace); rec.updatedAt = importedAt;
         results.push({ asin: r.asin, action: "EVIDENCIA ACTUALIZADA", reason: "Ya estaba en tu catálogo: se conserva tu análisis" });
         return;
       }
@@ -307,21 +318,8 @@
     }
   }
 
-  // Puerta FBA para el Motor Scoring (pura). Solo aplica si hay evidencia FBA registrada.
-  function fbaGate(s, nowMs) {
-    var f = s && s.fulfillment;
-    if (!f || !f.status) return null;
-    if (f.status === "FBA_RESTRICTED") return { decision: "DESCARTAR", reason: "FBA restringido según el Scanner (Seller Central)." };
-    if (f.status !== "FBA_ELIGIBLE") return { decision: "ESPERAR", reason: "FBA no confirmado (" + (f.label || f.status) + "): revísalo en Seller Central." };
-    var until = f.validUntil ? Date.parse(f.validUntil) : NaN;
-    if (!isFinite(until) || until <= (nowMs || Date.now())) return { decision: "ESPERAR", reason: "La verificación FBA del Scanner caducó: revalídala en Seller Central y vuelve a exportar." };
-    var e = s.eligibility || {};
-    if (e.source === "SCANNER") {
-      var eu = e.validUntil ? Date.parse(e.validUntil) : NaN;
-      if (!isFinite(eu) || eu <= (nowMs || Date.now())) return { decision: "ESPERAR", reason: "El permiso para publicar del Scanner caducó: revalídalo antes de decidir." };
-    }
-    return null;
-  }
+  // Puerta FBA (pura): delega en fba-verification.js, la misma regla para todos los productos.
+  function fbaGate(s, nowMs) { return FV ? FV.gate(s, nowMs) : { decision: "ESPERAR", reason: "Módulo de verificación FBA no cargado." }; }
 
   // ---------- interfaz (solo en navegador) ----------
   function esc(s) { return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }

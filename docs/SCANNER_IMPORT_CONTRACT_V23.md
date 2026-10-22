@@ -13,7 +13,7 @@
 | Agrega los seleccionados al catálogo local como **CANDIDATOS** | No carga costos de la tienda como costos reales |
 | Guarda la evidencia del Scanner con sus **fechas originales** | No inventa fechas, ventas, Buy Box, vendedores ni histórico |
 | Separa **permiso para publicar** y **FBA** | No marca como verificado tu match, marca ni autenticidad |
-| Agrega al Motor Scoring una **puerta FBA mínima** (solo para productos con evidencia FBA) | No cambia la decisión de productos manuales sin datos del Scanner |
+| Aporta la evidencia FBA del Scanner a la puerta FBA obligatoria | No reemplaza una verificación manual más reciente |
 
 ## 2. Archivos
 
@@ -21,7 +21,8 @@
 |---|---|
 | `scanner-bridge.js` (nuevo) | Núcleo puro (validar → normalizar → planificar → escribir) + vista previa + tarjeta «Dato Scanner» |
 | `data-tools.js` | El botón ahora es «Importar prospectos del Scanner» y usa el puente. Se retiró el importador anterior (escribía 3 claves sin vista previa y fijaba fechas = ahora) |
-| `jev-phase6-engine.js` | Puerta FBA: 1 línea en `gate()`, después de la elegibilidad |
+| `fba-verification.js` (nuevo) | Regla FBA obligatoria + panel de registro manual |
+| `jev-phase6-engine.js` | Puerta FBA en `gate()` (DESCARTAR primero, luego ESPERAR) + 8 autopruebas FBA |
 | `jev-v1.js` | La tarjeta de elegibilidad muestra la fuente real (antes decía siempre «MANUAL») |
 | `index.html`, `sw.js`, `jev-phase4-market.js` | Carga y caché del módulo nuevo (`scanner-bridge.js?v=1`, `data-tools.js?v=68`) |
 | `server/jev-server.cjs` | `scanner-bridge.js` en la lista de archivos que sirve el servidor local |
@@ -47,18 +48,22 @@
 | `exported_at`, `last_checked`, `expires_at`, `amazon_fees.fetched_at` | `scanner.*` | Se conservan tal cual |
 | `amazon_url` | `product.marketplace` | amazon.com→US, .ca→CA, .com.mx→MX; si falta, la vista previa pide elegirlo |
 
-## 4. Puerta FBA del Motor Scoring
+## 4. Puerta FBA del Motor Scoring (obligatoria para todos, aprobada 2026-10-22)
 
-Solo aplica si el producto tiene `fulfillment` (vino del Scanner):
+Vive en `fba-verification.js` y aplica a **todos** los productos: manuales, del Scanner o de Nepeto (que entra por el Scanner).
 
-| Situación | Decisión |
+| Verificación FBA del producto | Decisión |
 |---|---|
-| FBA_RESTRICTED | DESCARTAR |
-| NOT_VERIFIED o HAZMAT_REVIEW | ESPERAR |
-| FBA_ELIGIBLE pero vencido (`expires_at` pasado) o sin fecha | ESPERAR: revalida en Seller Central y vuelve a exportar |
-| Permiso para publicar del Scanner vencido | ESPERAR |
+| Autorizado para tu cuenta, vigente y del **mismo ASIN, marketplace, condición y modalidad FBA** | Continúa al Motor Scoring |
+| Sin verificar | ESPERAR |
+| Requiere aprobación / revisión hazmat | ESPERAR |
+| No autorizado | DESCARTAR |
+| De otro ASIN, marketplace o condición, o modalidad distinta de FBA | ESPERAR (volver a verificar) |
+| Vencida (72 h) o sin fecha de vigencia | ESPERAR |
 
-Productos manuales sin evidencia del Scanner: **sin cambios** (decisión pendiente de Jesús si se quiere exigir FBA a todos).
+- Registro manual: en «Identificación y elegibilidad» → **Verificación FBA (obligatoria)**, con nota obligatoria; se liga al ASIN, marketplace y condición actuales.
+- Registro del Scanner: vale hasta `expires_at`. Una verificación manual más reciente no se pisa al reimportar.
+- Solo cambia la decisión **actual**: operaciones y análisis guardados conservan su predicción. «Registrar compra» exige COMPRAR PILOTO, así que sin FBA vigente no se puede registrar una compra nueva.
 
 ## 5. Escritura y recuperación
 

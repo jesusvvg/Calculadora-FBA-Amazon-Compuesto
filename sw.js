@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261022-scanner-bridge-69";
+var CACHE = "fba-calc-motor-scoring-v1-20261022-fba-obligatorio-70";
 var ASSETS = [
   "./",
   "./index.html",
@@ -16,7 +16,8 @@ var ASSETS = [
   "./jev-observer-adapter.js",
   "./jev-observer-panel.js",
   "./data-tools.js?v=68",
-  "./scanner-bridge.js?v=1",
+  "./fba-verification.js?v=1",
+  "./scanner-bridge.js?v=2",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

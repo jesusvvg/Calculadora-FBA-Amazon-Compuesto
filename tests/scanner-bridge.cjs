@@ -42,14 +42,19 @@ function core(){
 
   // 8. Puerta FBA
   const now=Date.now(),soon=new Date(now+3600e3).toISOString(),past=new Date(now-60e3).toISOString();
-  assert.equal(SB.fbaGate({},now),null,'sin evidencia FBA no cambia productos manuales');
-  assert.equal(SB.fbaGate({fulfillment:{status:'FBA_RESTRICTED'}},now).decision,'DESCARTAR');
-  assert.equal(SB.fbaGate({fulfillment:{status:'NOT_VERIFIED'}},now).decision,'ESPERAR');
-  assert.equal(SB.fbaGate({fulfillment:{status:'HAZMAT_REVIEW'}},now).decision,'ESPERAR');
-  assert.equal(SB.fbaGate({fulfillment:{status:'FBA_ELIGIBLE',validUntil:soon},eligibility:{source:'SCANNER',validUntil:soon}},now),null);
-  assert.equal(SB.fbaGate({fulfillment:{status:'FBA_ELIGIBLE',validUntil:past}},now).decision,'ESPERAR');
-  assert.equal(SB.fbaGate({fulfillment:{status:'FBA_ELIGIBLE'}},now).decision,'ESPERAR','sin fecha de vigencia no se inventa una');
-  assert.equal(SB.fbaGate({fulfillment:{status:'FBA_ELIGIBLE',validUntil:soon},eligibility:{source:'SCANNER',validUntil:past}},now).decision,'ESPERAR');
+  // Regla vigente: FBA obligatorio para todos los productos (detalle en tests/fba-verification.cjs)
+  const P={asin:'B0FAKE0003',marketplace:'US',condition:'NEW'},F=o=>({status:'FBA_ELIGIBLE',asin:'B0FAKE0003',marketplace:'US',condition:'NEW',channel:'FBA',validUntil:soon,...o});
+  assert.equal(SB.fbaGate({product:P},now).decision,'ESPERAR','sin verificación FBA → ESPERAR');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F({status:'FBA_RESTRICTED'})},now).decision,'DESCARTAR');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F({status:'NOT_VERIFIED'})},now).decision,'ESPERAR');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F({status:'HAZMAT_REVIEW'})},now).decision,'ESPERAR');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F(),eligibility:{source:'SCANNER',validUntil:soon}},now),null);
+  assert.equal(SB.fbaGate({product:P,fulfillment:F({validUntil:past})},now).decision,'ESPERAR');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F({validUntil:undefined})},now).decision,'ESPERAR','sin fecha de vigencia no se inventa una');
+  assert.equal(SB.fbaGate({product:P,fulfillment:F(),eligibility:{source:'SCANNER',validUntil:past}},now).decision,'ESPERAR');
+  // El registro importado queda ligado a ASIN, marketplace, condición y modalidad
+  assert.deepEqual([c.state.fulfillment.asin,c.state.fulfillment.marketplace,c.state.fulfillment.condition,c.state.fulfillment.channel],['B0FAKE0003','US','NEW','FBA']);
+  assert.equal(SB.fbaGate(c.state,now),null,'candidato del Scanner con FBA vigente y del mismo producto pasa la puerta FBA');
   // Archivo caducado
   const old=SB.parse(txt(fresh(REAL,{hoursAgo:100,validHours:-1})));
   assert(old.records.every(r=>r.ok&&r.expired));
@@ -171,7 +176,7 @@ async function page(){
     // Recargar: evidencia visible y decisión conservadora
     ({w,nav}=await mount(opened));
     const ev=w.document.getElementById('sb-evidence');assert(ev,'tarjeta Dato Scanner');
-    assert.match(ev.textContent,/FBA ELEGIBLE/);assert.match(ev.textContent,/Amazon Retail: NO VERIFICADO/);assert.match(ev.textContent,/estimado SP-API/);
+    assert.match(ev.textContent,/FBA AUTORIZADO/);assert.match(ev.textContent,/Amazon Retail: NO VERIFICADO/);assert.match(ev.textContent,/estimado SP-API/);
     assert.equal(ev.querySelectorAll('img').length,0);
     const fin=w.MOTOR_SCORING_ENGINE.final;assert.notEqual(fin.decision,'COMPRAR PILOTO');assert.notEqual(fin.decision,'REPONER');
     assert.match(fin.reason,/match|Match|costo|Costo|incomplet|Falta/,'sin match manual ni costos no hay recomendación');
@@ -180,16 +185,16 @@ async function page(){
     // FBA restringido importado → DESCARTAR en el Motor Scoring
     const restricted=clone(JSON.parse(opened[KEY]));restricted.fulfillment.status='FBA_RESTRICTED';
     ({w}=await mount({...opened,[KEY]:JSON.stringify(restricted)}));
-    assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'DESCARTAR');assert.match(w.MOTOR_SCORING_ENGINE.final.reason,/FBA restringido/);w.close();
+    assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'DESCARTAR');assert.match(w.MOTOR_SCORING_ENGINE.final.reason,/FBA no autorizado/);w.close();
 
     // FBA caducado → ESPERAR
     const stale=clone(JSON.parse(opened[KEY]));stale.fulfillment.validUntil=new Date(Date.now()-60e3).toISOString();
     ({w}=await mount({...opened,[KEY]:JSON.stringify(stale)}));
     assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'ESPERAR');assert.match(w.MOTOR_SCORING_ENGINE.final.reason,/caducó/);w.close();
 
-    // Producto manual sin evidencia del Scanner: decisión idéntica a antes del puente
+    // Producto manual sin verificación FBA: ESPERAR (regla FBA obligatoria para todos)
     ({w}=await mount(initial()));assert.equal(w.document.getElementById('sb-evidence'),null);
-    assert.doesNotMatch(w.MOTOR_SCORING_ENGINE.final.reason||'',/FBA/);w.close();
+    assert.equal(w.MOTOR_SCORING_ENGINE.final.decision,'ESPERAR');assert.match(w.MOTOR_SCORING_ENGINE.final.reason,/FBA/,'FBA obligatorio también para productos manuales');w.close();
 
     // Falla de cuota al importar: nada cambia
     ({w}=await mount(initial()));const h2=w.document.getElementById('data-tools'),b2=all(w);
