@@ -1,0 +1,275 @@
+{
+  "generator": "Amazon Sourcing Scanner",
+  "schema_version": "2.3",
+  "exported_at": "2026-10-24T19:18:49.032038+00:00",
+  "count": 1,
+  "disclaimer": "Prospectos para análisis: publicación y FBA verificadas, NO orden de compra. El beneficio es preliminar y excluye costes. Revalidar permisos y precio antes de comprar.",
+  "prospects": [
+    {
+      "asin": "B0FAKE0001",
+      "gtin": "00000000000017",
+      "source": "Walmart",
+      "condition": "NEW",
+      "source_price": 5.48,
+      "source_regular_price": 7.97,
+      "shipping_cost": 0.0,
+      "source_tax": 0.38,
+      "source_tax_status": "ASSUMED",
+      "source_acquisition_cost": 5.86,
+      "amazon_price": 17.99,
+      "bsr_current": 25400,
+      "match_status": "EXACT",
+      "match_confidence": "HIGH",
+      "match_method": "AUTOMATIC",
+      "listing_eligibility": "AUTHORIZED",
+      "fulfillment_eligibility": "FBA_ELIGIBLE",
+      "historical_data_status": "NOT_AVAILABLE",
+      "historical_source": "INTERNAL",
+      "conservative_price": null,
+      "manual_history_check": "OK",
+      "fees_verified": true,
+      "amazon_sale_price_conservative": 17.99,
+      "amazon_fees": {
+        "total": 3.0,
+        "referral": 1.5,
+        "fba": 1.5,
+        "other": 0.0,
+        "source": "SP-API Product Fees (estimación de Amazon)",
+        "fetched_at": "2026-10-24T19:18:48.943447+00:00"
+      },
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": 5.13,
+      "net_profit_excludes": [
+        "almacenaje",
+        "colocación de inventario",
+        "devoluciones",
+        "envío tienda → prep center"
+      ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0001",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T19:18:48.971206+00:00",
+        "valid_until": "2026-10-27T19:18:48.971206+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
+      "source_trust_level": "NOT_VERIFIED",
+      "risk_flags": [
+        "LOGISTICS_ASSUMED",
+        "NO_HISTORICAL_DATA",
+        "PRICE_ABOVE_RETAIL_REFERENCE",
+        "SOURCE_TRUST_NOT_VERIFIED",
+        "STOCK_NOT_VERIFIED",
+        "TAX_ASSUMED"
+      ],
+      "opportunity_status": "PROSPECT",
+      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 32.6 %, spread USD 12.13); ganancia neta estimada USD 5.13 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
+      "source_url": "https://www.walmart.com/ip/ficticio-1",
+      "amazon_url": "https://www.amazon.com/dp/B0FAKE0001",
+      "last_checked": "2026-10-24T19:18:48.920387+00:00",
+      "expires_at": "2026-10-27T19:18:48.869007+00:00"
+    }
+  ],
+  "economic_review_count": 2,
+  "economic_review_limit": 10,
+  "economic_review_disclaimer": "Revisión económica: no cumplen los pisos del Scanner o su ganancia depende de la logística supuesta. NO son prospectos ni autorización de compra: el Calculador decide con costos reales.",
+  "economic_review": [
+    {
+      "asin": "B0FAKE0002",
+      "gtin": "00000000000024",
+      "source": "Walmart",
+      "condition": "NEW",
+      "source_price": 3.0,
+      "source_regular_price": 5.49,
+      "shipping_cost": 0.0,
+      "source_tax": 0.21,
+      "source_tax_status": "ASSUMED",
+      "source_acquisition_cost": 3.21,
+      "amazon_price": 13.99,
+      "bsr_current": 25400,
+      "match_status": "EXACT",
+      "match_confidence": "HIGH",
+      "match_method": "AUTOMATIC",
+      "listing_eligibility": "AUTHORIZED",
+      "fulfillment_eligibility": "FBA_ELIGIBLE",
+      "historical_data_status": "NOT_AVAILABLE",
+      "historical_source": "INTERNAL",
+      "conservative_price": null,
+      "manual_history_check": "OK",
+      "fees_verified": true,
+      "amazon_sale_price_conservative": 13.99,
+      "amazon_fees": {
+        "total": 4.0,
+        "referral": 2.0,
+        "fba": 2.0,
+        "other": 0.0,
+        "source": "SP-API Product Fees (estimación de Amazon)",
+        "fetched_at": "2026-10-24T19:18:48.948658+00:00"
+      },
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": 2.78,
+      "net_profit_excludes": [
+        "almacenaje",
+        "colocación de inventario",
+        "devoluciones",
+        "envío tienda → prep center"
+      ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0002",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T19:18:48.989419+00:00",
+        "valid_until": "2026-10-27T19:18:48.989419+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
+      "source_trust_level": "NOT_VERIFIED",
+      "risk_flags": [
+        "ECONOMIC_FLOOR_WARNING",
+        "LOGISTICS_ASSUMED",
+        "NO_HISTORICAL_DATA",
+        "PRICE_ABOVE_RETAIL_REFERENCE",
+        "SOURCE_TRUST_NOT_VERIFIED",
+        "STOCK_NOT_VERIFIED",
+        "TAX_ASSUMED"
+      ],
+      "opportunity_status": "ECONOMIC_REVIEW",
+      "status_reason": "Revisión económica: Precio Amazon USD 13.99 bajo el piso de USD 15.00 · ganancia neta preliminar USD 2.78 por unidad con comisiones verificadas y logística supuesta USD 4.00: no comprable hasta el análisis completo",
+      "source_url": "https://www.walmart.com/ip/ficticio-2",
+      "amazon_url": "https://www.amazon.com/dp/B0FAKE0002",
+      "last_checked": "2026-10-24T19:18:48.923660+00:00",
+      "expires_at": "2026-10-27T19:18:48.869013+00:00",
+      "candidate_type": "ECONOMIC_REVIEW",
+      "purchase_authorized": false,
+      "economic_review": {
+        "reasons": [
+          "Revisión económica: Precio Amazon USD 13.99 bajo el piso de USD 15.00 · ganancia neta preliminar USD 2.78 por unidad con comisiones verificadas y logística supuesta USD 4.00: no comprable hasta el análisis completo"
+        ],
+        "flags": [
+          "ECONOMIC_FLOOR_WARNING",
+          "LOGISTICS_ASSUMED",
+          "TAX_ASSUMED"
+        ],
+        "missing_data": [
+          "LOGISTICS_COST_ASSUMED",
+          "SOURCE_TAX_ASSUMED",
+          "HISTORICAL_DATA_NOT_AVAILABLE",
+          "REAL_PREP_AND_INBOUND_COSTS_PENDING"
+        ],
+        "cost_basis": {
+          "logistics": "ASSUMED",
+          "source_tax": "ASSUMED",
+          "amazon_fees": "SP_API_ESTIMATE"
+        },
+        "spread": 10.78,
+        "cost_ratio": 0.2294
+      }
+    },
+    {
+      "asin": "B0FAKE0003",
+      "gtin": "00000000000031",
+      "source": "Walmart",
+      "condition": "NEW",
+      "source_price": 9.0,
+      "source_regular_price": 11.49,
+      "shipping_cost": 0.0,
+      "source_tax": 0.63,
+      "source_tax_status": "ASSUMED",
+      "source_acquisition_cost": 9.63,
+      "amazon_price": 17.99,
+      "bsr_current": 25400,
+      "match_status": "EXACT",
+      "match_confidence": "HIGH",
+      "match_method": "AUTOMATIC",
+      "listing_eligibility": "AUTHORIZED",
+      "fulfillment_eligibility": "FBA_ELIGIBLE",
+      "historical_data_status": "NOT_AVAILABLE",
+      "historical_source": "INTERNAL",
+      "conservative_price": null,
+      "manual_history_check": "OK",
+      "fees_verified": true,
+      "amazon_sale_price_conservative": 17.99,
+      "amazon_fees": {
+        "total": 5.5,
+        "referral": 2.75,
+        "fba": 2.75,
+        "other": 0.0,
+        "source": "SP-API Product Fees (estimación de Amazon)",
+        "fetched_at": "2026-10-24T19:18:48.946147+00:00"
+      },
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": -1.14,
+      "net_profit_excludes": [
+        "almacenaje",
+        "colocación de inventario",
+        "devoluciones",
+        "envío tienda → prep center"
+      ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0003",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T19:18:49.004681+00:00",
+        "valid_until": "2026-10-27T19:18:49.004681+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
+      "source_trust_level": "NOT_VERIFIED",
+      "risk_flags": [
+        "LOGISTICS_ASSUMED",
+        "LOGISTICS_DEPENDENT",
+        "NO_HISTORICAL_DATA",
+        "SOURCE_TRUST_NOT_VERIFIED",
+        "STOCK_NOT_VERIFIED",
+        "TAX_ASSUMED"
+      ],
+      "opportunity_status": "ECONOMIC_REVIEW",
+      "status_reason": "Revisión económica: ganancia neta USD -1.14 por unidad con la logística supuesta USD 4.00, sin ese supuesto serían USD 2.86. Confirma los costos del prep center antes de decidir",
+      "source_url": "https://www.walmart.com/ip/ficticio-3",
+      "amazon_url": "https://www.amazon.com/dp/B0FAKE0003",
+      "last_checked": "2026-10-24T19:18:48.925591+00:00",
+      "expires_at": "2026-10-27T19:18:48.869016+00:00",
+      "candidate_type": "ECONOMIC_REVIEW",
+      "purchase_authorized": false,
+      "economic_review": {
+        "reasons": [
+          "Revisión económica: ganancia neta USD -1.14 por unidad con la logística supuesta USD 4.00, sin ese supuesto serían USD 2.86. Confirma los costos del prep center antes de decidir"
+        ],
+        "flags": [
+          "LOGISTICS_ASSUMED",
+          "LOGISTICS_DEPENDENT",
+          "TAX_ASSUMED"
+        ],
+        "missing_data": [
+          "LOGISTICS_COST_ASSUMED",
+          "SOURCE_TAX_ASSUMED",
+          "HISTORICAL_DATA_NOT_AVAILABLE",
+          "REAL_PREP_AND_INBOUND_COSTS_PENDING"
+        ],
+        "cost_basis": {
+          "logistics": "ASSUMED",
+          "source_tax": "ASSUMED",
+          "amazon_fees": "SP_API_ESTIMATE"
+        },
+        "spread": 8.36,
+        "cost_ratio": 0.5353
+      }
+    }
+  ]
+}

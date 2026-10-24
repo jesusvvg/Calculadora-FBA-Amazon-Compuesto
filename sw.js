@@ -1,7 +1,23 @@
-var CACHE = "fba-calc-v3";
+var CACHE = "fba-calc-motor-scoring-v1-20261024-revision-economica-72";
 var ASSETS = [
   "./",
   "./index.html",
+  "./amazon-plan-expenses.js?v=65",
+  "./jev-v1.js",
+  "./jev-phase2.js",
+  "./jev-phase3.js",
+  "./jev-phase4-market.js",
+  "./jev-phase5-rotation-risk.js",
+  "./jev-phase6-engine.js",
+  "./operations-v1.js",
+  "./operations-v1.js?v=58",
+  "./jev-financial-sync.js?v=62",
+  "./jev-observer-contract.js",
+  "./jev-observer-adapter.js",
+  "./jev-observer-panel.js",
+  "./data-tools.js?v=68",
+  "./fba-verification.js?v=1",
+  "./scanner-bridge.js?v=2",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -22,8 +38,10 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  if (new URL(e.request.url).pathname.startsWith("/api/")) return;
+
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    fetch(e.request, {cache:"no-store"}).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       return res;
