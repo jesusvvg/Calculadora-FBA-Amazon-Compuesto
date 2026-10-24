@@ -8,7 +8,8 @@ const suites = [
   "tests/multiple-asins.cjs",
   "tests/operation-close.cjs",
   "tests/scanner-bridge.cjs",
-  "tests/fba-verification.cjs"
+  "tests/fba-verification.cjs",
+  "tests/scanner-econ-review.cjs"
 ];
 
 for (const suite of suites) {

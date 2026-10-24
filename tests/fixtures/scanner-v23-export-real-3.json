@@ -1,7 +1,7 @@
 {
   "generator": "Amazon Sourcing Scanner",
   "schema_version": "2.3",
-  "exported_at": "2026-10-22T02:52:07.797601+00:00",
+  "exported_at": "2026-10-24T18:48:12.168754+00:00",
   "count": 3,
   "disclaimer": "Prospectos para análisis: publicación y FBA verificadas, NO orden de compra. El beneficio es preliminar y excluye costes. Revalidar permisos y precio antes de comprar.",
   "prospects": [
@@ -35,16 +35,30 @@
         "fba": 2.65,
         "other": 0.0,
         "source": "SP-API Product Fees (estimación de Amazon)",
-        "fetched_at": "2026-10-22T02:52:07.715934+00:00"
+        "fetched_at": "2026-10-24T18:48:12.102825+00:00"
       },
-      "logistics_assumed": 1.5,
-      "net_profit_per_unit_estimate": 5.42,
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": 2.92,
       "net_profit_excludes": [
         "almacenaje",
         "colocación de inventario",
         "devoluciones",
         "envío tienda → prep center"
       ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0003",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T18:48:12.147698+00:00",
+        "valid_until": "2026-10-27T18:48:12.147698+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
       "source_trust_level": "NOT_VERIFIED",
       "risk_flags": [
         "LOGISTICS_ASSUMED",
@@ -55,11 +69,11 @@
         "TAX_ASSUMED"
       ],
       "opportunity_status": "PROSPECT",
-      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 28.7 %, spread USD 12.12); ganancia neta estimada USD 5.42 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
+      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 28.7 %, spread USD 12.12); ganancia neta estimada USD 2.92 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
       "source_url": "https://www.walmart.com/ip/ficticio-3",
       "amazon_url": "https://www.amazon.com/dp/B0FAKE0003",
-      "last_checked": "2026-10-22T02:52:07.689170+00:00",
-      "expires_at": "2026-10-25T02:52:07.645510+00:00"
+      "last_checked": "2026-10-24T18:48:12.082043+00:00",
+      "expires_at": "2026-10-27T18:48:12.040598+00:00"
     },
     {
       "asin": "B0FAKE0001",
@@ -91,16 +105,30 @@
         "fba": 2.8,
         "other": 0.0,
         "source": "SP-API Product Fees (estimación de Amazon)",
-        "fetched_at": "2026-10-22T02:52:07.710734+00:00"
+        "fetched_at": "2026-10-24T18:48:12.097731+00:00"
       },
-      "logistics_assumed": 1.5,
-      "net_profit_per_unit_estimate": 5.13,
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": 2.63,
       "net_profit_excludes": [
         "almacenaje",
         "colocación de inventario",
         "devoluciones",
         "envío tienda → prep center"
       ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0001",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T18:48:12.121369+00:00",
+        "valid_until": "2026-10-27T18:48:12.121369+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
       "source_trust_level": "NOT_VERIFIED",
       "risk_flags": [
         "LOGISTICS_ASSUMED",
@@ -111,11 +139,11 @@
         "TAX_ASSUMED"
       ],
       "opportunity_status": "PROSPECT",
-      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 32.6 %, spread USD 12.13); ganancia neta estimada USD 5.13 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
+      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 32.6 %, spread USD 12.13); ganancia neta estimada USD 2.63 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
       "source_url": "https://www.walmart.com/ip/ficticio-1",
       "amazon_url": "https://www.amazon.com/dp/B0FAKE0001",
-      "last_checked": "2026-10-22T02:52:07.684533+00:00",
-      "expires_at": "2026-10-25T02:52:07.645504+00:00"
+      "last_checked": "2026-10-24T18:48:12.077170+00:00",
+      "expires_at": "2026-10-27T18:48:12.040592+00:00"
     },
     {
       "asin": "B0FAKE0002",
@@ -147,16 +175,30 @@
         "fba": 3.18,
         "other": 0.0,
         "source": "SP-API Product Fees (estimación de Amazon)",
-        "fetched_at": "2026-10-22T02:52:07.713445+00:00"
+        "fetched_at": "2026-10-24T18:48:12.100452+00:00"
       },
-      "logistics_assumed": 1.5,
-      "net_profit_per_unit_estimate": 5.36,
+      "logistics_assumed": 4.0,
+      "net_profit_per_unit_estimate": 2.86,
       "net_profit_excludes": [
         "almacenaje",
         "colocación de inventario",
         "devoluciones",
         "envío tienda → prep center"
       ],
+      "logistics_status": "ASSUMED",
+      "fba_verification": {
+        "status": "FBA_ELIGIBLE",
+        "method": "USER_DECLARED",
+        "source": "SELLER_CENTRAL_MANUAL",
+        "asin": "B0FAKE0002",
+        "marketplace": "US",
+        "condition": "NEW",
+        "channel": "FBA",
+        "account_ref": "adc563754bb9",
+        "checked_at": "2026-10-24T18:48:12.136106+00:00",
+        "valid_until": "2026-10-27T18:48:12.136106+00:00",
+        "note": "FICTICIO: prueba de integración, no es Seller Central real"
+      },
       "source_trust_level": "NOT_VERIFIED",
       "risk_flags": [
         "LOGISTICS_ASSUMED",
@@ -167,11 +209,11 @@
         "TAX_ASSUMED"
       ],
       "opportunity_status": "PROSPECT",
-      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 33.5 %, spread USD 12.96); ganancia neta estimada USD 5.36 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
+      "status_reason": "Match EXACT por identificador con variante validada; cumple ratio y pisos (ratio 33.5 %, spread USD 12.96); ganancia neta estimada USD 2.86 por unidad con comisiones de Amazon y logística supuesta (sin almacenaje ni devoluciones); techo PROSPECTO: sin histórico propio suficiente",
       "source_url": "https://www.walmart.com/ip/ficticio-2",
       "amazon_url": "https://www.amazon.com/dp/B0FAKE0002",
-      "last_checked": "2026-10-22T02:52:07.687458+00:00",
-      "expires_at": "2026-10-25T02:52:07.645508+00:00"
+      "last_checked": "2026-10-24T18:48:12.080222+00:00",
+      "expires_at": "2026-10-27T18:48:12.040596+00:00"
     }
   ]
 }

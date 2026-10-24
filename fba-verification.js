@@ -5,6 +5,9 @@
  *  - FBA no verificado → ESPERAR.   - Requiere aprobación / revisión → ESPERAR.   - No autorizado → DESCARTAR.
  *  - La verificación debe corresponder al mismo ASIN, marketplace, condición y modalidad FBA del producto.
  *  - Una verificación positiva vence (72 h): se revalida en Seller Central.
+ *  - Solo para verificaciones importadas del Scanner (source SCANNER, 2026-10-24): se exige además su procedencia
+ *    (fecha real del chequeo no futura, método conocido, cuenta ligada y nota) y la vigencia no supera el chequeo + 72 h.
+ *    Los registros manuales siguen exactamente la regla anterior.
  * Solo afecta decisiones actuales y futuras: las operaciones y análisis guardados conservan su predicción.
  */
 (function (root, factory) {
@@ -52,6 +55,14 @@
     if (mismatch.length)
       return { decision: "ESPERAR", reason: "La verificación FBA no corresponde a este producto (" + mismatch.join(", ") + "): vuelve a verificar." };
     var until = f.validUntil ? Date.parse(f.validUntil) : NaN;
+    if (f.source === "SCANNER") {
+      var checked = f.checkedAt ? Date.parse(f.checkedAt) : NaN;
+      if (!isFinite(checked) || checked > now + 5 * 60e3 || (norm(f.method) !== "USER_DECLARED" && norm(f.method) !== "SP_API"))
+        return { decision: "ESPERAR", reason: "La verificación FBA del Scanner no trae su procedencia (fecha real del chequeo y método): verifica en Seller Central." };
+      if (!f.accountRef || !String(f.note || "").trim())
+        return { decision: "ESPERAR", reason: "La verificación FBA del Scanner no está ligada a tu cuenta o no trae la nota de lo que se vio: verifica en Seller Central." };
+      if (isFinite(until)) until = Math.min(until, checked + TTL_HOURS * 3600e3);
+    }
     if (!isFinite(until) || until <= now)
       return { decision: "ESPERAR", reason: "La verificación FBA caducó: revalídala en Seller Central." };
     var e = s.eligibility || {};

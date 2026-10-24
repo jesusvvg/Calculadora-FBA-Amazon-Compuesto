@@ -1,5 +1,6 @@
 // Puente Scanner JSON v2.3 → Calculador. Pruebas del núcleo puro y de la página completa (jsdom).
-// Datos 100 % ficticios. El fixture «real» lo generó el exportador del Scanner (338f6e8) con Amazon simulado.
+// Datos 100 % ficticios. El fixture «real» lo generó el exportador del Scanner (rama prefiltro-economico, 2026-10-24) con Amazon simulado:
+// trae logistics_status y la procedencia de la verificación FBA (fba_verification).
 'use strict';
 const {JSDOM,VirtualConsole}=require('jsdom');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
@@ -8,11 +9,13 @@ const root=path.resolve(__dirname,'..'),KEY='jev_v1',OPS='amazon_compuesto_opera
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const clone=x=>JSON.parse(JSON.stringify(x));
 const REAL=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','scanner-v23-export-real-3.json'),'utf8'));
+const REF=REAL.prospects[0].fba_verification.account_ref,MINE={trustedAccountRef:REF};   // huella registrada de TU cuenta
 
 // Re-ancla las fechas del fixture a «ahora» para que la prueba no caduque con el calendario.
 function fresh(doc,{hoursAgo=1,validHours=48}={}){
   const d=clone(doc),now=Date.now(),at=new Date(now-hoursAgo*3600e3).toISOString(),exp=new Date(now+validHours*3600e3).toISOString();
-  d.exported_at=at;d.prospects.forEach(p=>{p.last_checked=at;p.expires_at=exp;if(p.amazon_fees)p.amazon_fees.fetched_at=at});return d;
+  d.exported_at=at;d.prospects.forEach(p=>{p.last_checked=at;p.expires_at=exp;if(p.amazon_fees)p.amazon_fees.fetched_at=at;
+    if(p.fba_verification){p.fba_verification.checked_at=at;p.fba_verification.valid_until=new Date(Date.parse(at)+72*3600e3).toISOString()}});return d;
 }
 const txt=x=>JSON.stringify(x);
 function memLS(init={},failOn){const m=new Map(Object.entries(init));let n=0;return {getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>{n++;if(failOn&&failOn(k,n))throw Object.assign(new Error('quota'),{name:'QuotaExceededError'});m.set(k,String(v))},removeItem:k=>m.delete(k),dump:()=>Object.fromEntries(m)}}
@@ -28,7 +31,7 @@ function core(){
   // 3. Publicar y FBA separados
   assert.equal(r0.listingStatus,'AUTORIZADO');assert.equal(r0.fbaStatus,'FBA_ELIGIBLE');assert.equal(r0.marketplace,'US');
   // 4 y 5. Precio de venta ≠ costo; comisiones en USD → % solo con el mismo denominador
-  const c=SB.newCandidate(r0,'v2.3','2026-01-01T00:00:00.000Z',{p_ref:'15',p_fba:'5.50',p_cogs:'18',p_flete:'10',p_presu:'999'},{p_presu:'300',p_plan:'pro'},'US');
+  const c=SB.newCandidate(r0,'v2.3','2026-01-01T00:00:00.000Z',{p_ref:'15',p_fba:'5.50',p_cogs:'18',p_flete:'10',p_presu:'999'},{p_presu:'300',p_plan:'pro'},'US',MINE);
   assert.equal(c.inputs.p_precio,String(r0.salePrice));assert.notEqual(c.inputs.p_precio,String(r0.acquisitionCost));
   assert.equal(c.inputs.p_ref,String(Math.round(r0.fees.referral/r0.salePrice*10000)/100));
   assert.equal(c.inputs.p_fba,String(Math.round((r0.fees.fba+r0.fees.other)*100)/100));
@@ -36,14 +39,18 @@ function core(){
   // 6 y 7. Nada desconocido se vuelve favorable; no se fabrican fechas
   assert.equal(c.state.market.amazonSeller,'NO VERIFICADO');assert.equal(c.state.market.checkedAt,r0.lastChecked);
   assert.equal(c.state.eligibility.checkedAt,null);assert.equal(c.state.eligibility.evidenceAt,doc.exported_at.replace(/\+00:00$/,'Z').replace(/(\.\d{3})\d*Z$/,'$1Z'));
-  assert.equal(c.state.fulfillment.checkedAt,null);assert.equal(c.state.product.stage,'CANDIDATO');
+  // La fecha del chequeo FBA es la REAL que registró el Scanner (no la de exportación) y trae su procedencia
+  assert.equal(c.state.fulfillment.checkedAt,new Date(doc.prospects[0].fba_verification.checked_at).toISOString());
+  assert.deepEqual([c.state.fulfillment.method,c.state.fulfillment.origin,c.state.fulfillment.source],['USER_DECLARED','SELLER_CENTRAL_MANUAL','SCANNER']);
+  assert.match(c.state.fulfillment.accountRef,/^[0-9a-f]{12}$/);assert(c.state.fulfillment.note);
+  assert.equal(r0.logisticsStatus,'ASSUMED');assert.equal(c.state.product.stage,'CANDIDATO');
   assert.equal(c.state.verification,undefined,'el match del Scanner no marca tu verificación manual');
   assert.equal(c.state.market.salesEstimatedMonthly,undefined);assert.equal(c.state.market.buyBox,undefined);
 
   // 8. Puerta FBA
   const now=Date.now(),soon=new Date(now+3600e3).toISOString(),past=new Date(now-60e3).toISOString();
   // Regla vigente: FBA obligatorio para todos los productos (detalle en tests/fba-verification.cjs)
-  const P={asin:'B0FAKE0003',marketplace:'US',condition:'NEW'},F=o=>({status:'FBA_ELIGIBLE',asin:'B0FAKE0003',marketplace:'US',condition:'NEW',channel:'FBA',validUntil:soon,...o});
+  const P={asin:'B0FAKE0003',marketplace:'US',condition:'NEW'},F=o=>({status:'FBA_ELIGIBLE',asin:'B0FAKE0003',marketplace:'US',condition:'NEW',channel:'FBA',checkedAt:past,validUntil:soon,...o});
   assert.equal(SB.fbaGate({product:P},now).decision,'ESPERAR','sin verificación FBA → ESPERAR');
   assert.equal(SB.fbaGate({product:P,fulfillment:F({status:'FBA_RESTRICTED'})},now).decision,'DESCARTAR');
   assert.equal(SB.fbaGate({product:P,fulfillment:F({status:'NOT_VERIFIED'})},now).decision,'ESPERAR');
@@ -59,6 +66,34 @@ function core(){
   const old=SB.parse(txt(fresh(REAL,{hoursAgo:100,validHours:-1})));
   assert(old.records.every(r=>r.ok&&r.expired));
   const oc=SB.newCandidate(old.records[0].data,'v2.3','x',{},{},'US');assert.equal(SB.fbaGate(oc.state,now).decision,'ESPERAR');
+  // 9. Procedencia FBA (2026-10-24): un JSON que solo DECLARA FBA_ELIGIBLE no basta
+  const strip=f=>{const d=fresh(REAL);d.prospects.forEach(f);return SB.parse(txt(d)).records.find(r=>r.asin==='B0FAKE0003')};
+  const cand=(r,o=MINE)=>SB.newCandidate(r.data,'v2.3','x',{},{},'US',o).state;
+  const bare=strip(p=>{delete p.fba_verification});
+  assert(bare.ok&&bare.warnings.some(w=>/sin procedencia/.test(w)));
+  assert.equal(cand(bare).fulfillment.checkedAt,null);assert.match(SB.fbaGate(cand(bare),now).reason,/procedencia/);
+  const noAcct=strip(p=>{p.fba_verification.account_ref=null});assert.match(SB.fbaGate(cand(noAcct),now).reason,/ligada a tu cuenta/);
+  // Cuenta (revisión PR #4): un hash cualquiera no prueba que sea TU cuenta
+  const good=strip(()=>{});assert.equal(SB.fbaGate(cand(good),now),null,'misma huella que la registrada → pasa');
+  const unreg=cand(good,{});assert.equal(unreg.fulfillment.accountCheck,'NOT_REGISTERED');assert.equal(unreg.fulfillment.accountRef,null);
+  assert.match(SB.fbaGate(unreg,now).reason,/ligada a tu cuenta/,'sin huella registrada → ESPERAR');
+  const other=cand(good,{trustedAccountRef:'0123456789ab'});assert.equal(other.fulfillment.accountCheck,'OTHER_ACCOUNT');
+  assert.equal(SB.fbaGate(other,now).decision,'ESPERAR','huella de otra cuenta → ESPERAR');
+  assert.equal(cand(good,{trustedAccountRef:'no-es-huella'}).fulfillment.accountCheck,'NOT_REGISTERED','huella mal formada = no registrada');
+  const forged=strip(p=>{p.fba_verification.account_ref='ffffffffffff'});assert.equal(SB.fbaGate(cand(forged),now).decision,'ESPERAR','hash inventado → ESPERAR');
+  assert.equal(JSON.stringify(cand(good)).includes('FAKESELLER01'),false,'nunca el Seller ID');
+  const noNote=strip(p=>{p.fba_verification.note=''});assert.equal(SB.fbaGate(cand(noNote),now).decision,'ESPERAR');
+  const badMethod=strip(p=>{p.fba_verification.method='JSON'});assert(badMethod.warnings.some(w=>/método desconocido/.test(w)));
+  assert.equal(SB.fbaGate(cand(badMethod),now).decision,'ESPERAR');
+  const otherAsin=strip(p=>{p.fba_verification.asin='B0OTROASIN'});assert.equal(SB.fbaGate(cand(otherAsin),now).decision,'ESPERAR');
+  const mism=strip(p=>{p.fba_verification.status='FBA_RESTRICTED'});assert(mism.warnings.some(w=>/estado distinto/.test(w)));
+  const future=strip(p=>{p.fba_verification.checked_at=new Date(now+3600e3).toISOString()});assert.match(SB.fbaGate(cand(future),now).reason,/procedencia/);
+  // Vigencia = la menor entre valid_until, expires_at y chequeo + 72 h
+  const longV=strip(p=>{const t=new Date(now-80*3600e3).toISOString();p.fba_verification.checked_at=t;p.fba_verification.valid_until=new Date(now+999*3600e3).toISOString()});
+  assert.match(SB.fbaGate(cand(longV),now).reason,/caducó/,'un valid_until generoso no extiende las 72 h');
+  const shortV=strip(p=>{p.fba_verification.valid_until=new Date(now-1000).toISOString()});assert.match(SB.fbaGate(cand(shortV),now).reason,/caducó/);
+  const quoted=strip(p=>{p.logistics_status='QUOTED'});assert.equal(quoted.data.logisticsStatus,'QUOTED');
+  assert.equal(strip(p=>{p.logistics_status='INVENTADO'}).data.logisticsStatus,'ASSUMED','estado desconocido = supuesto');
 
   // 11. Archivos y registros inválidos: rechazo comprensible, sin escribir
   const bad=(t,re)=>{const p=SB.parse(t);assert.equal(p.ok,false,t.slice(0,60));assert.match(p.error,re)};
@@ -116,7 +151,7 @@ function initial(){
   const inputs={p_presu:'300',p_plan:'pro',p_unid:'2',p_precio:'29.99',p_ref:'15',p_fba:'4.10',p_cogs:'9',p_flete:'3'};
   const state={product:{asin:'B0ACTIVEC1',brand:'TEST-C',stage:'CANDIDATO'},eligibility:{status:'AUTORIZADO',source:'MANUAL',checkedAt:'2026-10-12T00:00:00.000Z'},market:{priceMinRecent:29.99},capital:{reserveTarget:50}};
   const op={id:'OP-C',kind:'COMPRA',status:'ABIERTA',product:{asin:'B0ACTIVEC1',brand:'TEST-C'},prediction:{units:2,investment:24,price:29.99,daysToCash:60,roi:.3,margin:.2},purchase:{units:2,investment:24},actual:{}};
-  return {[KEY]:JSON.stringify(state),fba_v2:JSON.stringify(inputs),[OPS]:JSON.stringify([op])};
+  return {[KEY]:JSON.stringify(state),fba_v2:JSON.stringify(inputs),[OPS]:JSON.stringify([op]),[SB.ACCOUNT_KEY]:REF};
 }
 const all=w=>Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));
 async function page(){
