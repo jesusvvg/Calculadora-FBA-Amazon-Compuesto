@@ -45,17 +45,20 @@ function pure(){
   assert.deepEqual([rec.asin,rec.marketplace,rec.condition,rec.channel],[ASIN,'US','NEW','FBA']);
   assert.equal(Date.parse(rec.validUntil)-now,72*3600e3);assert.equal(g(rec),'CONTINUAR');
   assert.equal(FV.makeRecord({status:'INVENTADO'}).status,'NOT_VERIFIED');
-  // Procedencia (2026-10-24)
-  assert.equal(rec.method,'USER_DECLARED','el registro manual es declarado por el usuario');
-  const legacy=FBA();delete legacy.method;assert.equal(g(legacy),'CONTINUAR','registros manuales previos (sin método) siguen valiendo');
-  assert.equal(g(FBA({checkedAt:null})),'ESPERAR');assert.equal(g(FBA({checkedAt:'no-es-fecha'})),'ESPERAR');
-  assert.match(FV.gate({product:P,fulfillment:FBA({checkedAt:iso(now+3600e3)})},now).reason,/futuro/);
-  assert.equal(g(FBA({checkedAt:iso(now+60e3)})),'CONTINUAR','tolera un desfase de reloj menor a 5 min');
-  assert.equal(g(FBA({method:'JSON'})),'ESPERAR');assert.equal(g(FBA({source:'SCANNER',method:null})),'ESPERAR');
-  assert.equal(g(FBA({method:'SP_API'})),'CONTINUAR');
+  // Revisión PR #4: los registros MANUALES siguen exactamente la regla anterior (sin requisitos nuevos)
+  assert.equal(g(FBA({checkedAt:null})),'CONTINUAR','manual: rige solo validUntil, como antes');
+  assert.equal(g(FBA({checkedAt:iso(now+3600e3)})),'CONTINUAR','manual: la fecha del chequeo no se reinterpreta');
+  assert.equal(g(FBA({checkedAt:iso(now-73*3600e3),validUntil:iso(now+3600e3)})),'CONTINUAR','manual: vence por validUntil, como antes');
+  assert.equal(rec.method,undefined,'makeRecord no cambió');
+  // Solo las verificaciones importadas del Scanner exigen procedencia
   const sc=o=>FBA({source:'SCANNER',method:'USER_DECLARED',accountRef:'adc563754bb9',note:'Seller Central: FBA disponible',...o});
-  assert.equal(g(sc()),'CONTINUAR');assert.equal(g(sc({accountRef:null})),'ESPERAR');assert.equal(g(sc({note:'  '})),'ESPERAR');
-  assert.equal(g(FBA({checkedAt:iso(now-73*3600e3),validUntil:iso(now+3600e3)})),'ESPERAR','72 h desde el chequeo aunque valid_until diga más');
+  assert.equal(g(sc()),'CONTINUAR');assert.equal(g(sc({method:'SP_API'})),'CONTINUAR');
+  assert.equal(g(sc({checkedAt:null})),'ESPERAR');assert.equal(g(sc({checkedAt:'no-es-fecha'})),'ESPERAR');
+  assert.equal(g(sc({checkedAt:iso(now+3600e3)})),'ESPERAR','fecha futura');assert.equal(g(sc({checkedAt:iso(now+60e3)})),'CONTINUAR','desfase < 5 min');
+  assert.equal(g(sc({method:'JSON'})),'ESPERAR');assert.equal(g(sc({method:null})),'ESPERAR');
+  assert.equal(g(sc({accountRef:null})),'ESPERAR');assert.equal(g(sc({note:'  '})),'ESPERAR');
+  assert.equal(g(sc({checkedAt:iso(now-73*3600e3),validUntil:iso(now+3600e3)})),'ESPERAR','Scanner: 72 h desde el chequeo aunque valid_until diga más');
+  assert.equal(g(sc({status:'FBA_RESTRICTED',checkedAt:null,accountRef:null})),'DESCARTAR','una restricción confirmada descarta aunque falte procedencia');
 }
 
 async function page(){

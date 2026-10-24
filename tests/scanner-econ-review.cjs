@@ -11,6 +11,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const clone=x=>JSON.parse(JSON.stringify(x));
 const txt=x=>JSON.stringify(x);
 const REAL=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures','scanner-v23-export-econ-review.json'),'utf8'));
+const REF=REAL.prospects[0].fba_verification.account_ref,MINE={trustedAccountRef:REF};   // huella registrada de TU cuenta
 
 // Re-ancla las fechas del fixture a «ahora» (prospectos y candidatos, incluida la verificación FBA).
 function fresh(doc,{hoursAgo=1,validHours=48}={}){
@@ -51,7 +52,7 @@ function core(){
   assert.equal(a.data.fbaVerification.method,'USER_DECLARED');
 
   // 4. Importar: candidato marcado, con la misma puerta FBA que cualquier producto
-  const pl=SB.plan({catalog:{},active:{},inputs:{}},parsed,['B0FAKE0001','B0FAKE0002','B0FAKE0003'],{importedAt:'2026-10-24T00:00:00.000Z'});
+  const pl=SB.plan({catalog:{},active:{},inputs:{}},parsed,['B0FAKE0001','B0FAKE0002','B0FAKE0003'],{importedAt:'2026-10-24T00:00:00.000Z',...MINE});
   assert.match(pl.results.find(r=>r.asin==='B0FAKE0002').reason,/REVISIÓN ECONÓMICA \(no autoriza compra\)/);
   const st=pl.catalog.B0FAKE0002.state;
   assert.equal(st.scanner.candidateType,'ECONOMIC_REVIEW');assert.equal(st.scanner.purchaseAuthorized,false);
@@ -60,7 +61,7 @@ function core(){
   assert.equal(pl.catalog.B0FAKE0001.state.scanner.candidateType,'PROSPECT');assert.equal(pl.catalog.B0FAKE0001.state.scanner.economicReview,null);
   assert.equal(SB.fbaGate(st,now),null,'FBA vigente con procedencia: pasa la puerta (no es decisión de compra)');
   const noFba=SB.parse(txt((()=>{const d=fresh(REAL);delete d.economic_review[0].fba_verification;return d})()));
-  const st2=SB.plan({catalog:{},active:{},inputs:{}},noFba,['B0FAKE0002']).catalog.B0FAKE0002.state;
+  const st2=SB.plan({catalog:{},active:{},inputs:{}},noFba,['B0FAKE0002'],MINE).catalog.B0FAKE0002.state;
   assert.equal(SB.fbaGate(st2,now).decision,'ESPERAR','sin procedencia FBA → ESPERAR');
   const restricted=clone(st);restricted.fulfillment.status='FBA_RESTRICTED';
   assert.equal(SB.fbaGate(restricted,now).decision,'DESCARTAR','restricción confirmada → DESCARTAR');
@@ -69,7 +70,7 @@ function core(){
   const later=fresh(REAL,{hoursAgo:0.5});const promoted=clone(later.economic_review[0]);
   promoted.opportunity_status='PROSPECT';delete promoted.candidate_type;delete promoted.purchase_authorized;delete promoted.economic_review;
   later.prospects.push(promoted);later.count=2;later.economic_review=later.economic_review.slice(1);later.economic_review_count=1;
-  const up=SB.plan({catalog:pl.catalog,active:{},inputs:{}},SB.parse(txt(later)),['B0FAKE0002']);
+  const up=SB.plan({catalog:pl.catalog,active:{},inputs:{}},SB.parse(txt(later)),['B0FAKE0002'],MINE);
   assert.equal(up.results[0].action,'EVIDENCIA ACTUALIZADA');assert.equal(up.catalog.B0FAKE0002.state.scanner.candidateType,'PROSPECT');
 
   // 6. Manipulaciones: nunca un secundario como autorización ni mezclado con prospectos
@@ -90,6 +91,64 @@ function core(){
   assert.equal(tamper(d=>{d.economic_review_limit=1}).ok,false,'más candidatos que el límite del Scanner');
   assert.equal(tamper(d=>{d.economic_review=Array.from({length:51},(_,i)=>{const x=clone(d.economic_review[0]);x.asin='B0LIM'+String(i).padStart(5,'0');return x});d.economic_review_count=51;d.economic_review_limit=51}).ok,false,'tope duro del Calculador');
   assert.equal(tamper(d=>{d.economic_review='x'}).ok,false);
+
+  // 7. Prioridad de bloqueos (revisión PR #4): alertas económicas + restricción definitiva → nunca candidato
+  const blocked=[['fulfillment_eligibility','FBA_RESTRICTED'],['fulfillment_eligibility','HAZMAT_REVIEW'],['fulfillment_eligibility','NOT_VERIFIED'],
+    ['listing_eligibility','NOT_AUTHORIZED'],['listing_eligibility','REQUIRES_APPROVAL'],['listing_eligibility','NOT_VERIFIED']];
+  for(const [k,v] of blocked){
+    const r=rec(tamper(d=>{d.economic_review[0][k]=v}),'B0FAKE0002');
+    assert.equal(r.ok,false,k+'='+v+' con alertas económicas debe rechazarse');
+    assert(r.data===null&&r.errors.some(e=>/sin (FBA|permiso para publicar) AUTORIZADO/.test(e)),k+'='+v);
+    assert.equal(SB.plan({catalog:{},active:{},inputs:{}},tamper(d=>{d.economic_review[0][k]=v}),['B0FAKE0002'],MINE).results[0].action,'RECHAZADO');
+  }
+  // Con varias banderas económicas a la vez, la restricción sigue mandando
+  const combo=rec(tamper(d=>{const x=d.economic_review[0];x.risk_flags.push('LOGISTICS_DEPENDENT','ECONOMIC_FLOOR_WARNING');x.fulfillment_eligibility='FBA_RESTRICTED'}),'B0FAKE0002');
+  assert.equal(combo.ok,false);
+
+  // 8. Importaciones sucesivas (revisión PR #4): verificaciones manuales y datos históricos intactos
+  const H=3600e3,iso=t=>new Date(t).toISOString();
+  const manual=(o={})=>({status:'FBA_ELIGIBLE',label:'FBA AUTORIZADO',asin:'B0FAKE0002',marketplace:'US',condition:'NEW',channel:'FBA',source:'MANUAL',
+    checkedAt:iso(now-0.05*H),evidenceAt:iso(now-0.05*H),validUntil:iso(now+71*H),note:'Seller Central: revisado a mano',...o});
+  // Estado con análisis manual, costos, capital y compra registrada: nada de esto puede cambiar
+  const userState=()=>({product:{asin:'B0FAKE0002',marketplace:'US',condition:'NEW',stage:'CANDIDATO'},costs:{checkout:{displayedUnit:3,taxUnit:.21},prep:{prepUnit:1.1}},
+    capital:{reserveTarget:50},purchase:{units:3,investment:12.5},verification:{match:'OK'},market:{priceMinRecent:13.99,source:'MANUAL'},
+    eligibility:{status:'AUTORIZADO',source:'MANUAL',checkedAt:iso(now-0.5*H)},fulfillment:manual()});
+  const asEcon=fresh(REAL),asProspect=(()=>{const d=fresh(REAL,{hoursAgo:0.1});const x=clone(d.economic_review[0]);
+    x.opportunity_status='PROSPECT';delete x.candidate_type;delete x.purchase_authorized;delete x.economic_review;
+    d.prospects.push(x);d.count=2;d.economic_review=d.economic_review.slice(1);d.economic_review_count=1;return d})();
+  const protectedKeys=st=>{const c=clone(st);delete c.scanner;delete c.fulfillment;delete c.eligibility;return c};
+  for(const [label,seq] of [['REVISIÓN→PROSPECTO',[asEcon,asProspect]],['PROSPECTO→REVISIÓN',[asProspect,asEcon]]]){
+    // (a) en el catálogo  (b) como producto activo
+    let cat={B0FAKE0002:{asin:'B0FAKE0002',updatedAt:'x',state:userState(),inputs:{p_cogs:'3',p_unid:'3'},origin:'MANUAL'},B0OTRO0001:{asin:'B0OTRO0001',state:{x:1},inputs:{y:2}}};
+    let act=userState();act.product.asin='B0FAKE0002';
+    const cat0=clone(cat),act0=clone(act);
+    for(const d of seq){
+      const pc=SB.plan({catalog:cat,active:{},inputs:{}},SB.parse(txt(d)),['B0FAKE0002'],MINE);cat=pc.catalog;
+      const pa=SB.plan({catalog:{},active:act,inputs:{}},SB.parse(txt(d)),['B0FAKE0002'],MINE);act=pa.active||act;
+      assert.equal('operations' in pc||'operations' in pa,false,'el plan nunca toca operaciones');
+    }
+    assert.deepEqual(cat.B0FAKE0002.state.fulfillment,cat0.B0FAKE0002.state.fulfillment,label+': la verificación manual más reciente se conserva (catálogo)');
+    assert.deepEqual(act.fulfillment,act0.fulfillment,label+': la verificación manual más reciente se conserva (activo)');
+    assert.deepEqual(cat.B0FAKE0002.state.eligibility,cat0.B0FAKE0002.state.eligibility,label+': permiso manual intacto');
+    assert.deepEqual(protectedKeys(cat.B0FAKE0002.state),protectedKeys(cat0.B0FAKE0002.state),label+': análisis, costos, capital y compra intactos');
+    assert.deepEqual(protectedKeys(act),protectedKeys(act0),label+': producto activo intacto salvo la evidencia');
+    assert.deepEqual(cat.B0FAKE0002.inputs,cat0.B0FAKE0002.inputs);assert.deepEqual(cat.B0OTRO0001,cat0.B0OTRO0001,'otros productos intactos');
+    assert.equal(cat.B0FAKE0002.state.scanner.candidateType,seq[1]===asProspect?'PROSPECT':'ECONOMIC_REVIEW',label+': la evidencia sí se actualiza');
+  }
+  // Una verificación manual MÁS ANTIGUA solo la reemplaza una del Scanner completa, de tu cuenta y más reciente
+  const older=()=>({catalog:{B0FAKE0002:{asin:'B0FAKE0002',state:{...userState(),fulfillment:manual({checkedAt:iso(now-30*H),validUntil:iso(now+42*H)})},inputs:{}}},active:{},inputs:{}});
+  const after=(d,o)=>SB.plan(older(),SB.parse(txt(d)),['B0FAKE0002'],o).catalog.B0FAKE0002.state.fulfillment;
+  assert.equal(after(asEcon,MINE).source,'SCANNER','completa, propia y más reciente → reemplaza');
+  assert.equal(after(asEcon,{}).source,'MANUAL','sin huella registrada → no pisa la manual');
+  assert.equal(after(asEcon,{trustedAccountRef:'0123456789ab'}).source,'MANUAL','de otra cuenta → no pisa la manual');
+  const noProv=fresh(REAL);delete noProv.economic_review[0].fba_verification;
+  assert.equal(after(noProv,MINE).source,'MANUAL','sin procedencia → no pisa la manual');
+  // Una restricción manual reciente nunca se convierte en autorización por una importación
+  const restrictedManual={catalog:{B0FAKE0002:{asin:'B0FAKE0002',state:{...userState(),fulfillment:manual({status:'FBA_RESTRICTED',label:'FBA NO AUTORIZADO'})},inputs:{}}},active:{},inputs:{}};
+  for(const d of [asEcon,asProspect]){
+    const st=SB.plan(clone(restrictedManual),SB.parse(txt(d)),['B0FAKE0002'],MINE).catalog.B0FAKE0002.state;
+    assert.equal(st.fulfillment.status,'FBA_RESTRICTED');assert.equal(SB.fbaGate(st,now).decision,'DESCARTAR');
+  }
 }
 
 // ---------------------------------------------------------------- página completa (jsdom)
@@ -97,7 +156,7 @@ function initial(){
   const inputs={p_presu:'300',p_plan:'pro',p_unid:'2',p_precio:'29.99',p_ref:'15',p_fba:'4.10',p_cogs:'9',p_flete:'3'};
   const state={product:{asin:'B0ACTIVEC1',brand:'TEST-C',stage:'CANDIDATO'},eligibility:{status:'AUTORIZADO',source:'MANUAL',checkedAt:'2026-10-12T00:00:00.000Z'},market:{priceMinRecent:29.99},capital:{reserveTarget:50}};
   const op={id:'OP-C',kind:'COMPRA',status:'ABIERTA',product:{asin:'B0ACTIVEC1',brand:'TEST-C'},prediction:{units:2,investment:24,price:29.99,daysToCash:60,roi:.3,margin:.2},purchase:{units:2,investment:24},actual:{}};
-  return {[KEY]:JSON.stringify(state),fba_v2:JSON.stringify(inputs),[OPS]:JSON.stringify([op])};
+  return {[KEY]:JSON.stringify(state),fba_v2:JSON.stringify(inputs),[OPS]:JSON.stringify([op]),[SB.ACCOUNT_KEY]:REF};
 }
 const all=w=>Object.fromEntries(Object.keys(w.localStorage).map(k=>[k,w.localStorage.getItem(k)]));
 
@@ -112,6 +171,14 @@ async function page(){
     return {w,nav:()=>nav};
   }
   try{
+    // Sin huella registrada: la vista previa lo avisa y permite registrarla (no importa nada)
+    {const data=initial();delete data[SB.ACCOUNT_KEY];const {w}=await mount(data),h=w.document.getElementById('data-tools'),b=all(w);
+      w.SCANNER_BRIDGE.renderPreview(h,w.SCANNER_BRIDGE.parse(txt(fresh(REAL))),w);
+      assert.match(w.document.getElementById('sb-preview').textContent,/registra la huella de tu cuenta/);assert.match(w.document.getElementById('sb-preview').textContent,/HUELLA DE CUENTA NO REGISTRADA/);
+      w.document.getElementById('sb-account').value='no-valida';w.document.getElementById('sb-account-save').click();assert.deepEqual(all(w),b,'huella inválida no se guarda');
+      w.document.getElementById('sb-account').value=REF.toUpperCase();w.document.getElementById('sb-account-save').click();
+      assert.equal(w.localStorage.getItem(SB.ACCOUNT_KEY),REF);assert.equal(w.document.getElementById('sb-account'),null,'ya registrada');
+      const a2=all(w);delete a2[SB.ACCOUNT_KEY];assert.deepEqual(a2,b,'registrar la huella no cambia nada más');w.close();}
     let {w,nav}=await mount(initial());
     const host=w.document.getElementById('data-tools'),before=all(w),doc=fresh(REAL);
     w.SCANNER_BRIDGE.readFile(new w.File([txt(doc)],'prospectos.json',{type:'application/json'}),w,host);await wait(150);
@@ -155,5 +222,5 @@ async function page(){
 }
 
 (async()=>{core();await page();
-  console.log('PASS: Scanner→Calculator economic review (real exporter fixture): prospects export unchanged; secondary candidates separate, unchecked, never purchase authorization; original reasons, missing data and cost provenance kept; inviable never arrives; same FBA gate (provenance/restricted); promotion to PROSPECT on re-export; tampering, mixing, duplicates and limits rejected; operations/capital/Motor Scoring untouched.');
+  console.log('PASS: Scanner→Calculator economic review (real exporter fixture): account ref must match the registered one; restrictions beat economic alerts; successive imports keep newer manual verifications, analysis, capital, purchases and operations; prospects export unchanged; secondary candidates separate, unchecked, never purchase authorization; original reasons, missing data and cost provenance kept; inviable never arrives; same FBA gate (provenance/restricted); promotion to PROSPECT on re-export; tampering, mixing, duplicates and limits rejected; operations/capital/Motor Scoring untouched.');
 })().catch(e=>{console.error(e);process.exit(1)});

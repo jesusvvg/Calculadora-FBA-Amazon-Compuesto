@@ -31,6 +31,11 @@
   var GLOBAL_INPUTS = ["p_presu", "p_plan", "c_corte1", "c_corte2", "c_banco"];
   var MAX_BYTES = 2 * 1024 * 1024, MAX_PROSPECTS = 500, MAX_TEXT = 500, MAX_MONEY = 100000, MAX_ECON_REVIEW = 50;
   var ECON = "ECONOMIC_REVIEW";
+  // Huella de TU cuenta (la que muestra el Scanner en Configuración). Clave local propia del puente: ninguna otra
+  // parte del Calculador la lee ni la escribe. No es el Seller ID ni una credencial.
+  var ACCOUNT_KEY = "scanner_account_ref_v1", ACCOUNT_RE = /^[0-9a-f]{12}$/;
+  function normRef(v) { var t = String(v === null || v === undefined ? "" : v).trim().toLowerCase(); return ACCOUNT_RE.test(t) ? t : null; }
+  function trustedRef(ls) { try { return ls ? normRef(ls.getItem(ACCOUNT_KEY)) : null; } catch (e) { return null; } }
   var ASIN_RE = /^[A-Z0-9]{10}$/;
 
   var LISTING = { AUTHORIZED: "AUTORIZADO", REQUIRES_APPROVAL: "REQUIERE APROBACIÓN", NOT_AUTHORIZED: "NO AUTORIZADO" };
@@ -160,6 +165,9 @@
     if (upper(p.candidate_type) !== ECON) r.errors.push("Candidato secundario sin candidate_type ECONOMIC_REVIEW");
     if (upper(p.opportunity_status) !== ECON) r.errors.push("Candidato secundario con estado distinto de ECONOMIC_REVIEW");
     if (p.purchase_authorized !== false) r.errors.push("Un candidato en revisión económica no puede venir como autorización de compra");
+    // Una restricción confirmada nunca es candidato: el Scanner solo exporta con publicación y FBA autorizados.
+    if (upper(p.listing_eligibility) !== "AUTHORIZED") r.errors.push("Candidato secundario sin permiso para publicar AUTORIZADO (" + (upper(p.listing_eligibility) || "vacío") + ")");
+    if (upper(p.fulfillment_eligibility) !== "FBA_ELIGIBLE") r.errors.push("Candidato secundario sin FBA AUTORIZADO (" + (upper(p.fulfillment_eligibility) || "vacío") + ")");
     if (!isObj(er) || !Array.isArray(er.reasons) || !er.reasons.length) r.errors.push("Faltan los motivos de la revisión económica");
     var list = function (v, f) { return Array.isArray(v) ? v.map(f).filter(Boolean).slice(0, 20) : []; };
     var cb = isObj(er) && isObj(er.cost_basis) ? er.cost_basis : {};
@@ -291,22 +299,27 @@
       economicReview: d.economicReview || null };
   }
   // Evidencia externa = lo que el Scanner afirma. Se puede refrescar sin tocar el análisis manual.
-  function applyEvidence(state, d, kind, importedAt, marketplace) {
+  function applyEvidence(state, d, kind, importedAt, marketplace, opts) {
     state.scanner = evidenceFrom(d, kind);
     state.scanner.importedAt = importedAt;
     // Verificación FBA ligada al ASIN, marketplace, condición y modalidad que verificó el Scanner, con su procedencia
     // (método, cuenta, fecha real del chequeo y nota). Sin procedencia, checkedAt queda null y la puerta da ESPERAR.
     var prevF = state.fulfillment || {}, v = d.fbaVerification || null;
     var scannerAt = v && v.checkedAt ? v.checkedAt : d.exportedAt;
-    // Una verificación manual MÁS RECIENTE que la del Scanner manda: no se pisa.
-    var manualNewer = prevF.source === "MANUAL" && prevF.checkedAt && scannerAt && Date.parse(prevF.checkedAt) > Date.parse(scannerAt);
-    if (!manualNewer) {
+    // Una verificación manual solo se reemplaza con una del Scanner COMPLETA (fecha real del chequeo), de TU cuenta
+    // (huella registrada) y MÁS RECIENTE. Una sin procedencia, de otra cuenta o más antigua nunca pisa la manual.
+    var trusted = normRef(opts && opts.trustedAccountRef);
+    var ownAccount = !!(v && v.accountRef && trusted && normRef(v.accountRef) === trusted);
+    var keepManual = prevF.source === "MANUAL" && prevF.checkedAt &&
+      (!v || !v.checkedAt || !ownAccount || Date.parse(prevF.checkedAt) >= Date.parse(scannerAt));
+    if (!keepManual) {
       var until = d.expiresAt;
       if (v && v.validUntil && (!until || Date.parse(v.validUntil) < Date.parse(until))) until = v.validUntil;
       state.fulfillment = { status: d.fbaStatus, label: FV ? FV.label(d.fbaStatus) : FBA_LABEL[d.fbaStatus], asin: v ? v.asin : d.asin,
         marketplace: (v && v.marketplace) || marketplace || d.marketplace || null, condition: v ? v.condition : "NEW",
         channel: v ? v.channel : "FBA", source: "SCANNER", method: v ? v.method : null, origin: v ? v.origin : null,
-        accountRef: v ? v.accountRef : null, checkedAt: v ? v.checkedAt : null, evidenceAt: d.exportedAt, validUntil: until,
+        // Solo se conserva la huella si es la de TU cuenta: de otra cuenta o sin huella registrada → la puerta da ESPERAR.
+        accountRef: ownAccount ? normRef(v.accountRef) : null, accountCheck: !v ? null : (ownAccount ? "OWN" : (trusted ? "OTHER_ACCOUNT" : "NOT_REGISTERED")), checkedAt: v ? v.checkedAt : null, evidenceAt: d.exportedAt, validUntil: until,
         note: v && v.note ? v.note : "" };
     }
     // El permiso para publicar solo se actualiza si nadie lo fijó a mano.
@@ -316,14 +329,14 @@
     }
     return state;
   }
-  function newCandidate(d, kind, importedAt, defaults, currentInputs, marketplace) {
+  function newCandidate(d, kind, importedAt, defaults, currentInputs, marketplace, opts) {
     var state = { version: 1,
       product: { asin: d.asin, upcEan: d.gtin || "", brand: d.brand || "", category: d.category || "", marketplace: marketplace,
         condition: "NEW", stage: "CANDIDATO" },
       eligibility: {}, financial: {}, market: { amazonSeller: "NO VERIFICADO", source: "SCANNER", checkedAt: d.lastChecked },
       risk: {}, rotation: {}, capitalEfficiency: {}, dataConfidence: {}, decision: {} };
     if (d.bsrCurrent !== null) state.market.bsrCurrent = d.bsrCurrent;
-    applyEvidence(state, d, kind, importedAt, marketplace);
+    applyEvidence(state, d, kind, importedAt, marketplace, opts);
     var inputs = Object.assign({}, defaults || {});
     inputs.p_precio = ""; inputs.p_cogs = ""; inputs.p_flete = ""; inputs.p_unid = "1";
     GLOBAL_INPUTS.forEach(function (k) { if (currentInputs && currentInputs[k] !== undefined) inputs[k] = currentInputs[k]; });
@@ -355,18 +368,18 @@
       if (!marketplace) { results.push({ asin: r.asin, action: "RECHAZADO", reason: "Marketplace sin confirmar" }); return; }
       if (r.asin === activeAsin) {
         if (active.scanner && active.scanner.exportedAt && active.scanner.exportedAt === d.exportedAt) { results.push({ asin: r.asin, action: "SIN CAMBIOS", reason: "Mismo archivo ya importado" }); return; }
-        applyEvidence(active, d, parsed.kind, importedAt, marketplace); activeChanged = true;
+        applyEvidence(active, d, parsed.kind, importedAt, marketplace, opts); activeChanged = true;
         results.push({ asin: r.asin, action: "EVIDENCIA ACTUALIZADA", reason: "Producto activo: se conserva tu análisis; solo cambia la evidencia del Scanner" });
         return;
       }
       var rec = catalog[r.asin];
       if (isObj(rec) && isObj(rec.state)) {
         if (rec.state.scanner && rec.state.scanner.exportedAt && rec.state.scanner.exportedAt === d.exportedAt) { results.push({ asin: r.asin, action: "SIN CAMBIOS", reason: "Mismo archivo ya importado" }); return; }
-        applyEvidence(rec.state, d, parsed.kind, importedAt, marketplace); rec.updatedAt = importedAt;
+        applyEvidence(rec.state, d, parsed.kind, importedAt, marketplace, opts); rec.updatedAt = importedAt;
         results.push({ asin: r.asin, action: "EVIDENCIA ACTUALIZADA", reason: "Ya estaba en tu catálogo: se conserva tu análisis" });
         return;
       }
-      catalog[r.asin] = newCandidate(d, parsed.kind, importedAt, opts.defaults, storage.inputs, marketplace);
+      catalog[r.asin] = newCandidate(d, parsed.kind, importedAt, opts.defaults, storage.inputs, marketplace, opts);
       results.push({ asin: r.asin, action: "NUEVO", reason: d.candidateType === ECON
         ? "Agregado como candidato en REVISIÓN ECONÓMICA (no autoriza compra)" : "Agregado al catálogo como candidato" });
     });
@@ -395,7 +408,7 @@
   }
 
   // Puerta FBA (pura): delega en fba-verification.js, la misma regla para todos los productos.
-  function fbaGate(s, nowMs) { return FV ? FV.gate(s, nowMs) : { decision: "ESPERAR", reason: "Módulo de verificación FBA no cargado." }; }
+  function fbaGate(s, nowMs, opts) { return FV ? FV.gate(s, nowMs, opts) : { decision: "ESPERAR", reason: "Módulo de verificación FBA no cargado." }; }
 
   // ---------- interfaz (solo en navegador) ----------
   function esc(s) { return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -438,6 +451,9 @@
       var check = r.ok ? '<input type="checkbox" class="sb-pick" value="' + esc(r.asin) + '"' + (isEcon ? "" : " checked") + ' aria-label="Importar ' + esc(r.asin) + '">' : "—";
       var state = !r.ok ? tag(r.duplicate ? "DUPLICADO" : "RECHAZADO", "bad") : (exists ? tag(r.asin === activeAsin ? "ACTIVO · solo evidencia" : "YA EN CATÁLOGO · solo evidencia", "warn") : tag("NUEVO", "good"));
       if (r.ok && r.expired) state += tag("CADUCADO", "bad");
+      var fvr = d && d.fbaVerification, mine = trustedRef(win.localStorage);
+      if (fvr && fvr.accountRef && (!mine || normRef(fvr.accountRef) !== mine))
+        state += tag(mine ? "FBA DE OTRA CUENTA" : "HUELLA DE CUENTA NO REGISTRADA", "warn");
       if (isEcon) state = tag("REVISIÓN ECONÓMICA · no autoriza compra", "warn") + state +
         (d && d.economicReview ? '<div class="sb-warn">' + esc(d.economicReview.reasons.join(" · ")) + "</div>" : "");
       if (!d) return "<tr><td>" + check + "</td><td>" + esc(r.asin || "(sin ASIN)") + "</td><td colspan=\"7\">" + state + '<div class="sb-warn">' + esc(r.errors.join(" · ")) + "</div></td></tr>";
@@ -458,18 +474,28 @@
       " · <b>" + okCount + "</b> válidos · " + (parsed.records.length - okCount) + " rechazados</span>" +
       "<span>Exportado " + esc(fdate(parsed.exportedAt)) + " · formato " + esc(parsed.kind) + "</span>" +
       (needsMarket ? '<label>Marketplace <select id="sb-market"><option value="">Elegir…</option><option value="US">Amazon.com · US</option><option value="CA">Amazon.ca · CA</option><option value="MX">Amazon.com.mx · MX</option></select></label>' : "") + "</div>" +
+      (trustedRef(win.localStorage) ? "" : '<div class="note" style="margin-bottom:10px;border-left:4px solid var(--warn)">Para aceptar verificaciones FBA del Scanner, registra la <b>huella de tu cuenta</b> (Scanner → Configuración). Sin ella, el FBA importado queda en ESPERAR. ' +
+        '<input id="sb-account" type="text" maxlength="12" autocomplete="off" placeholder="12 caracteres"> <button type="button" class="sb-btn sec" id="sb-account-save">Registrar huella</button></div>') +
       '<div class="note" style="margin-bottom:10px">Vista previa: <b>todavía no se guardó nada</b>. Los seleccionados entran a tu catálogo como <b>candidatos</b>; tu producto activo, operaciones, capital y gastos no cambian. Ganancia y comisiones son <b>estimaciones del Scanner</b>; los costos de la tienda no se cargan solos. Importar no es una orden de compra.' +
       (econCount ? ' Los candidatos en <b>revisión económica</b> no cumplen los pisos del Scanner o su ganancia depende de la logística supuesta: vienen sin marcar y <b>no son autorización de compra</b>.' : "") + '</div>' +
       '<div class="scroll"><table class="sb-table"><thead><tr><th></th><th>ASIN</th><th>Tienda</th><th class="r">Venta Amazon</th><th>Permisos</th><th>Match</th><th class="r">Ganancia prelim./u</th><th>Estado y avisos</th><th class="r">Dato Amazon</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
       '<div class="sb-actions"><button type="button" class="sb-btn" id="sb-confirm"' + (okCount ? "" : " disabled") + '>Importar seleccionados</button><button type="button" class="sb-btn sec" id="sb-cancel">Cancelar</button></div><div id="sb-results"></div>';
     doc.getElementById("sb-cancel").addEventListener("click", function () { box.remove(); });
+    var accSave = doc.getElementById("sb-account-save");
+    if (accSave) accSave.addEventListener("click", function () {
+      var ref = normRef(doc.getElementById("sb-account").value);
+      if (!ref) { showResults(box, [], "La huella son 12 caracteres (0-9, a-f): cópiala desde Scanner → Configuración.", "bad"); return; }
+      try { win.localStorage.setItem(ACCOUNT_KEY, ref); } catch (e) { showResults(box, [], "No se pudo guardar la huella. No cambió nada.", "bad"); return; }
+      renderPreview(host, parsed, win);      // vuelve a dibujar con la huella registrada (todavía no importa nada)
+    });
     doc.getElementById("sb-confirm").addEventListener("click", function () {
       var picks = Array.prototype.map.call(box.querySelectorAll(".sb-pick:checked"), function (x) { return x.value; });
       var mk = doc.getElementById("sb-market"), market = mk ? mk.value : null;
       if (mk && !market) { showResults(box, [], "Elige el marketplace del archivo antes de importar.", "bad"); return; }
       if (!picks.length) { showResults(box, [], "No hay prospectos ni candidatos seleccionados.", "bad"); return; }
       var current = readStorage(win.localStorage);
-      var pl = plan(current, parsed, picks, { marketplace: market, defaults: win.DEF || {}, importedAt: new Date().toISOString() });
+      var pl = plan(current, parsed, picks, { marketplace: market, defaults: win.DEF || {}, importedAt: new Date().toISOString(),
+        trustedAccountRef: trustedRef(win.localStorage) });
       var res = apply(win.localStorage, pl);
       if (!res.ok) { showResults(box, pl.results, res.error, "bad"); return; }
       doc.getElementById("sb-confirm").disabled = true;
@@ -551,7 +577,7 @@
     if (window.document.readyState === "loading") window.document.addEventListener("DOMContentLoaded", start); else start();
   }
 
-  return { SCHEMA_V23: SCHEMA_V23, LEGACY_SCHEMA: LEGACY_SCHEMA, parse: parse, plan: plan, apply: apply, fbaGate: fbaGate,
+  return { ACCOUNT_KEY: ACCOUNT_KEY, SCHEMA_V23: SCHEMA_V23, LEGACY_SCHEMA: LEGACY_SCHEMA, parse: parse, plan: plan, apply: apply, fbaGate: fbaGate,
     newCandidate: newCandidate, readFile: readFile, renderPreview: renderPreview, renderEvidence: renderEvidence, openInCalculator: openInCalculator,
     FBA_LABEL: FBA_LABEL };
 });
