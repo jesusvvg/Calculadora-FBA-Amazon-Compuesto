@@ -1,4 +1,4 @@
-var CACHE = "fba-calc-motor-scoring-v1-20261022-fba-obligatorio-70";
+var CACHE = "fba-calc-motor-scoring-v1-20261024-revision-economica-72";
 var ASSETS = [
   "./",
   "./index.html",

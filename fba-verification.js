@@ -5,6 +5,10 @@
  *  - FBA no verificado → ESPERAR.   - Requiere aprobación / revisión → ESPERAR.   - No autorizado → DESCARTAR.
  *  - La verificación debe corresponder al mismo ASIN, marketplace, condición y modalidad FBA del producto.
  *  - Una verificación positiva vence (72 h): se revalida en Seller Central.
+ * Procedencia (aprobada 2026-10-24): FBA AUTORIZADO exige fecha real del chequeo (no futura) y método conocido
+ *  (USER_DECLARED = lo registraste tú mirando Seller Central; SP_API = consulta autenticada). Si viene del Scanner,
+ *  además la huella de la cuenta y la nota de lo que se vio. Nunca se acepta FBA solo porque un JSON lo declare.
+ *  Vigencia = la menor entre «válido hasta» y la fecha del chequeo + 72 h.
  * Solo afecta decisiones actuales y futuras: las operaciones y análisis guardados conservan su predicción.
  */
 (function (root, factory) {
@@ -14,7 +18,8 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  var KEY = "jev_v1", TTL_HOURS = 72, CHANNEL = "FBA";
+  var KEY = "jev_v1", TTL_HOURS = 72, CHANNEL = "FBA", CLOCK_SKEW_MS = 5 * 60e3;
+  var METHOD = { USER_DECLARED: "declarado por ti (Seller Central)", SP_API: "consulta SP-API autenticada" };
   var STATUS = {
     FBA_ELIGIBLE: "FBA AUTORIZADO", REQUIRES_APPROVAL: "FBA REQUIERE APROBACIÓN", HAZMAT_REVIEW: "FBA EN REVISIÓN (HAZMAT)",
     FBA_RESTRICTED: "FBA NO AUTORIZADO", NOT_VERIFIED: "FBA NO VERIFICADO"
@@ -22,6 +27,8 @@
 
   function norm(v) { return String(v === null || v === undefined ? "" : v).trim().toUpperCase(); }
   function label(status) { return STATUS[status] || STATUS.NOT_VERIFIED; }
+  // Registros manuales anteriores a 2026-10-24 no guardaban el método: el manual siempre es declarado por el usuario.
+  function methodOf(f) { var m = norm(f && f.method); return m || (f && (f.source || "MANUAL") === "MANUAL" ? "USER_DECLARED" : ""); }
 
   // Registro de una verificación: siempre ligado a ASIN + marketplace + condición + modalidad.
   function makeRecord(o) {
@@ -29,7 +36,8 @@
     var checkedAt = o.checkedAt || null;
     var validUntil = o.validUntil || (checkedAt ? new Date(Date.parse(checkedAt) + TTL_HOURS * 3600e3).toISOString() : null);
     return { status: status, label: label(status), asin: norm(o.asin), marketplace: norm(o.marketplace), condition: norm(o.condition),
-      channel: CHANNEL, source: o.source || "MANUAL", checkedAt: checkedAt, evidenceAt: o.evidenceAt || checkedAt,
+      channel: CHANNEL, source: o.source || "MANUAL", method: o.method ? norm(o.method) : ((o.source || "MANUAL") === "MANUAL" ? "USER_DECLARED" : null),
+      accountRef: o.accountRef || null, checkedAt: checkedAt, evidenceAt: o.evidenceAt || checkedAt,
       validUntil: validUntil, note: o.note ? String(o.note).slice(0, 300) : "" };
   }
 
@@ -51,7 +59,18 @@
     if (norm(f.channel) !== CHANNEL) mismatch.push("modalidad FBA");
     if (mismatch.length)
       return { decision: "ESPERAR", reason: "La verificación FBA no corresponde a este producto (" + mismatch.join(", ") + "): vuelve a verificar." };
+    var checked = f.checkedAt ? Date.parse(f.checkedAt) : NaN;
+    if (!isFinite(checked))
+      return { decision: "ESPERAR", reason: "La verificación FBA no trae la fecha real del chequeo: verifica en Seller Central y regístrala." };
+    var method = methodOf(f);
+    if (!METHOD[method])
+      return { decision: "ESPERAR", reason: "La verificación FBA no indica cómo se hizo (Seller Central o SP-API): vuelve a verificar." };
+    if (checked > now + CLOCK_SKEW_MS)
+      return { decision: "ESPERAR", reason: "La fecha de la verificación FBA está en el futuro: vuelve a verificar." };
+    if (f.source === "SCANNER" && (!f.accountRef || !String(f.note || "").trim()))
+      return { decision: "ESPERAR", reason: "La verificación FBA del Scanner no trae la cuenta o la nota de lo que se vio: vuelve a verificar." };
     var until = f.validUntil ? Date.parse(f.validUntil) : NaN;
+    if (isFinite(until)) until = Math.min(until, checked + TTL_HOURS * 3600e3);
     if (!isFinite(until) || until <= now)
       return { decision: "ESPERAR", reason: "La verificación FBA caducó: revalídala en Seller Central." };
     var e = s.eligibility || {};
@@ -81,7 +100,7 @@
     var box = doc.createElement("div");
     box.id = "fba-verification"; box.className = "note"; box.style.marginTop = "12px";
     var stateLine = f ? esc(f.label || label(f.status)) + " · " + esc(f.asin || "—") + " · " + esc(f.marketplace || "—") + " · " + esc(f.condition || "—") +
-      " · " + esc(f.source || "—") + (f.checkedAt ? " · " + esc(new Date(f.checkedAt).toLocaleString("es-CL")) : (f.evidenceAt ? " · exportado " + esc(new Date(f.evidenceAt).toLocaleString("es-CL")) : "")) +
+      " · " + esc(f.source || "—") + (METHOD[methodOf(f)] ? " · " + esc(METHOD[methodOf(f)]) : "") + (f.checkedAt ? " · " + esc(new Date(f.checkedAt).toLocaleString("es-CL")) : (f.evidenceAt ? " · exportado " + esc(new Date(f.evidenceAt).toLocaleString("es-CL")) : "")) +
       (f.validUntil ? " · vence " + esc(new Date(f.validUntil).toLocaleString("es-CL")) : "") : "Sin verificación registrada";
     box.innerHTML = '<div class="flabel">Verificación FBA (obligatoria)</div>' +
       '<div class="hint" style="margin:0 0 8px">' + stateLine + "</div>" +
@@ -117,5 +136,5 @@
     else mount(window);
   }
 
-  return { gate: gate, makeRecord: makeRecord, label: label, TTL_HOURS: TTL_HOURS, STATUS: STATUS };
+  return { gate: gate, makeRecord: makeRecord, label: label, methodOf: methodOf, TTL_HOURS: TTL_HOURS, STATUS: STATUS, METHOD: METHOD };
 });
